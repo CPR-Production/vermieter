@@ -75,15 +75,17 @@ class Vermieter_DB {
             cost_category_definition_id BIGINT UNSIGNED NOT NULL,
             allocation_type VARCHAR(50) NOT NULL DEFAULT 'wohnflaeche',
             property_distribution_key_id BIGINT UNSIGNED NULL,
+            applies_to_type_key VARCHAR(50) NOT NULL DEFAULT 'alle',
             is_recurring TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY property_definition (property_id, cost_category_definition_id),
+            UNIQUE KEY property_definition_type (property_id, cost_category_definition_id, applies_to_type_key),
             KEY user_id (user_id),
             KEY property_id (property_id),
             KEY cost_category_definition_id (cost_category_definition_id),
             KEY allocation_type (allocation_type),
-            KEY property_distribution_key_id (property_distribution_key_id)
+            KEY property_distribution_key_id (property_distribution_key_id),
+            KEY applies_to_type_key (applies_to_type_key)
         ) $charset_collate;";
 
         $sql_costs = "CREATE TABLE $table_costs (
@@ -123,12 +125,14 @@ class Vermieter_DB {
             user_id BIGINT UNSIGNED NOT NULL,
             property_id BIGINT UNSIGNED NOT NULL,
             distribution_key_definition_id BIGINT UNSIGNED NOT NULL,
+            applies_to_type_key VARCHAR(50) NOT NULL DEFAULT 'alle',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY property_definition (property_id, distribution_key_definition_id),
+            UNIQUE KEY property_definition_type (property_id, distribution_key_definition_id, applies_to_type_key),
             KEY user_id (user_id),
             KEY property_id (property_id),
-            KEY distribution_key_definition_id (distribution_key_definition_id)
+            KEY distribution_key_definition_id (distribution_key_definition_id),
+            KEY applies_to_type_key (applies_to_type_key)
         ) $charset_collate;";
 
         $sql_apartment_distribution_values = "CREATE TABLE $table_apartment_distribution_values (
@@ -172,12 +176,14 @@ class Vermieter_DB {
             user_id BIGINT UNSIGNED NOT NULL,
             property_id BIGINT UNSIGNED NOT NULL,
             name VARCHAR(150) NOT NULL,
-            wohnflaeche FLOAT DEFAULT 0,
-            personen INT DEFAULT 0,
+            type_key VARCHAR(50) NOT NULL DEFAULT 'wohnung',
+            wohnflaeche DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            personen INT NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY user_id (user_id),
-            KEY property_id (property_id)
+            KEY property_id (property_id),
+            KEY type_key (type_key)
         ) $charset_collate;";
 
         dbDelta($sql_types);

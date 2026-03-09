@@ -12,25 +12,17 @@ class Vermieter_Apartments {
         global $wpdb;
         $table = $wpdb->prefix . 'vm_apartments';
 
-        if (!vm_table_exists($table) || empty($data['property_id']) || empty($data['name'])) {
-            return false;
-        }
-
-        $property = Vermieter_Properties::get((int) $data['property_id']);
-        if (!$property) {
-            return false;
-        }
-
         $inserted = $wpdb->insert(
             $table,
             [
-                'user_id'         => get_current_user_id(),
-                'property_id'     => (int) $data['property_id'],
-                'name'            => $data['name'],
-                'wohnflaeche'     => (float) ($data['wohnflaeche'] ?? 0),
-                'personen'        => (int) ($data['personen'] ?? 0),
+                'user_id'      => get_current_user_id(),
+                'property_id'  => (int) ($data['property_id'] ?? 0),
+                'name'         => sanitize_text_field($data['name'] ?? ''),
+                'type_key'     => sanitize_text_field($data['type_key'] ?? 'wohnung'),
+                'wohnflaeche'  => (float) ($data['wohnflaeche'] ?? 0),
+                'personen'     => (int) ($data['personen'] ?? 0),
             ],
-            ['%d', '%d', '%s', '%f', '%d']
+            ['%d', '%d', '%s', '%s', '%f', '%d']
         );
 
         return $inserted ? (int) $wpdb->insert_id : false;
@@ -75,5 +67,60 @@ class Vermieter_Apartments {
                 $user_id
             )
         );
+    }
+
+    public static function get($id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'vm_apartments';
+
+        return $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM $table
+                WHERE id = %d
+                AND user_id = %d",
+                (int) $id,
+                get_current_user_id()
+            )
+        );
+    }
+
+    public static function update($id, $data) {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'vm_apartments';
+        $user_id = get_current_user_id();
+
+        $id = (int) $id;
+        $property_id = (int) ($data['property_id'] ?? 0);
+        $name = sanitize_text_field($data['name'] ?? '');
+        $type_key = sanitize_text_field($data['type_key'] ?? 'wohnung');
+        $wohnflaeche = (float) ($data['wohnflaeche'] ?? 0);
+        $personen = (int) ($data['personen'] ?? 0);
+
+        if ($id <= 0 || $property_id <= 0 || $name === '') {
+            return false;
+        }
+
+        $updated = $wpdb->update(
+            $table,
+            [
+                'property_id' => $property_id,
+                'name'        => $name,
+                'type_key'    => $type_key,
+                'wohnflaeche' => $wohnflaeche,
+                'personen'    => $personen,
+            ],
+            [
+                'id'      => $id,
+                'user_id' => $user_id,
+            ],
+            ['%d', '%s', '%s', '%f', '%d'],
+            ['%d', '%d']
+        );
+
+        return $updated !== false;
     }
 }

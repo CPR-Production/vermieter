@@ -117,15 +117,16 @@ class Vermieter_Shortcodes {
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property_cost_category') {
             check_admin_referer('vm_save_property_cost_category');
 
-            $id = Vermieter_Property_Cost_Categories::add([
+            $result = Vermieter_Property_Cost_Categories::add([
                 'property_id'                  => (int) ($_POST['vm_property_id'] ?? 0),
                 'cost_category_definition_id'  => (int) ($_POST['vm_cost_category_definition_id'] ?? 0),
                 'allocation_type'              => sanitize_text_field(wp_unslash($_POST['vm_allocation_type'] ?? 'wohnflaeche')),
                 'property_distribution_key_id' => (int) ($_POST['vm_property_distribution_key_id'] ?? 0),
+                'applies_to_type_key'          => sanitize_text_field(wp_unslash($_POST['vm_applies_to_type_key'] ?? 'alle')),
                 'is_recurring'                 => !empty($_POST['vm_is_recurring']) ? 1 : 0,
             ]);
 
-            $message = $id ? 'Objekt-Kategorie gespeichert.' : 'Objekt-Kategorie konnte nicht gespeichert werden.';
+            $message = !empty($result['message']) ? $result['message'] : 'Speichern fehlgeschlagen.';
         }
 
         return vm_render_template('form-property-cost-categories.php', [
@@ -189,17 +190,33 @@ class Vermieter_Shortcodes {
 
         $message = '';
         $distribution_values_map = [];
-        $apartments_by_property = [];
+        $apartments_by_property_distribution_key = [];
+        $edit_id = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : 0;
+        $edit_item = $edit_id ? Vermieter_Property_Distribution_Keys::get($edit_id) : null;
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property_distribution_key') {
             check_admin_referer('vm_save_property_distribution_key');
 
-            $id = Vermieter_Property_Distribution_Keys::add([
-                'property_id'                    => (int) ($_POST['vm_property_id'] ?? 0),
-                'distribution_key_definition_id' => (int) ($_POST['vm_distribution_key_definition_id'] ?? 0),
-            ]);
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
 
-            $message = $id ? 'Schlüssel dem Objekt zugeordnet.' : 'Zuordnung konnte nicht gespeichert werden.';
+            if ($record_id > 0) {
+                $result = Vermieter_Property_Distribution_Keys::update($record_id, [
+                    'property_id'                    => (int) ($_POST['vm_property_id'] ?? 0),
+                    'distribution_key_definition_id' => (int) ($_POST['vm_distribution_key_definition_id'] ?? 0),
+                    'applies_to_type_key'            => sanitize_text_field(wp_unslash($_POST['vm_applies_to_type_key'] ?? 'alle')),
+                ]);
+
+                $message = $result ? 'Zuordnung aktualisiert.' : 'Zuordnung konnte nicht aktualisiert werden.';
+                $edit_item = $record_id ? Vermieter_Property_Distribution_Keys::get($record_id) : null;
+            } else {
+                $id = Vermieter_Property_Distribution_Keys::add([
+                    'property_id'                    => (int) ($_POST['vm_property_id'] ?? 0),
+                    'distribution_key_definition_id' => (int) ($_POST['vm_distribution_key_definition_id'] ?? 0),
+                    'applies_to_type_key'            => sanitize_text_field(wp_unslash($_POST['vm_applies_to_type_key'] ?? 'alle')),
+                ]);
+
+                $message = $id ? 'Schlüssel dem Objekt zugeordnet.' : 'Zuordnung konnte nicht gespeichert werden.';
+            }
         }
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_inline_distribution_values') {
@@ -226,21 +243,28 @@ class Vermieter_Shortcodes {
             $property_id = (int) $key->property_id;
             $property_distribution_key_id = (int) $key->id;
 
-            if (!isset($apartments_by_property[$property_id])) {
-                $apartments_by_property[$property_id] = Vermieter_Apartments::get_by_property($property_id);
-            }
+            $all_apartments = Vermieter_Apartments::get_by_property($property_id);
+
+            $apartments_by_property_distribution_key[$property_distribution_key_id] = array_values(array_filter(
+                $all_apartments,
+                function ($apartment) use ($key) {
+                    return $key->applies_to_type_key === 'alle'
+                        || $apartment->type_key === $key->applies_to_type_key;
+                }
+            ));
 
             $distribution_values_map[$property_distribution_key_id] =
                 Vermieter_Apartment_Distribution_Values::get_values_by_property_distribution_key($property_distribution_key_id);
         }
 
         return vm_render_template('form-property-distribution-keys.php', [
-            'message'                 => $message,
-            'properties'              => Vermieter_Properties::get_all(),
-            'definitions'             => Vermieter_Distribution_Key_Definitions::get_all_by_user(),
-            'assigned_keys'           => $assigned_keys,
-            'apartments_by_property'  => $apartments_by_property,
-            'distribution_values_map' => $distribution_values_map,
+            'message'                                 => $message,
+            'properties'                              => Vermieter_Properties::get_all(),
+            'definitions'                             => Vermieter_Distribution_Key_Definitions::get_all_by_user(),
+            'assigned_keys'                           => $assigned_keys,
+            'edit_item'                               => $edit_item,
+            'apartments_by_property_distribution_key' => $apartments_by_property_distribution_key,
+            'distribution_values_map'                 => $distribution_values_map,
         ]);
     }
 
@@ -364,24 +388,37 @@ class Vermieter_Shortcodes {
         }
 
         $message = '';
+        $edit_id = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : 0;
+        $edit_item = $edit_id ? Vermieter_Apartments::get($edit_id) : null;
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_apartment') {
             check_admin_referer('vm_save_apartment');
 
-            $id = Vermieter_Apartments::add([
-                'property_id'     => (int) ($_POST['vm_property_id'] ?? 0),
-                'name'            => sanitize_text_field(wp_unslash($_POST['vm_apartment_name'] ?? '')),
-                'wohnflaeche'     => vm_post_decimal('vm_wohnflaeche'),
-                'personen'        => (int) ($_POST['vm_personen'] ?? 0),
-            ]);
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
 
-            $message = $id ? 'Wohnung gespeichert.' : 'Wohnung konnte nicht gespeichert werden.';
+            $data = [
+                'property_id' => (int) ($_POST['vm_property_id'] ?? 0),
+                'name'        => sanitize_text_field(wp_unslash($_POST['vm_apartment_name'] ?? '')),
+                'type_key'    => sanitize_text_field(wp_unslash($_POST['vm_type_key'] ?? 'wohnung')),
+                'wohnflaeche' => vm_post_decimal('vm_wohnflaeche'),
+                'personen'    => (int) ($_POST['vm_personen'] ?? 0),
+            ];
+
+            if ($record_id > 0) {
+                $result = Vermieter_Apartments::update($record_id, $data);
+                $message = $result ? 'Wohnung aktualisiert.' : 'Wohnung konnte nicht aktualisiert werden.';
+                $edit_item = $record_id ? Vermieter_Apartments::get($record_id) : null;
+            } else {
+                $id = Vermieter_Apartments::add($data);
+                $message = $id ? 'Wohnung gespeichert.' : 'Wohnung konnte nicht gespeichert werden.';
+            }
         }
 
         return vm_render_template('form-apartments.php', [
             'message'    => $message,
             'properties' => Vermieter_Properties::get_all(),
             'apartments' => Vermieter_Apartments::get_all_by_user(),
+            'edit_item'  => $edit_item,
         ]);
     }
 
