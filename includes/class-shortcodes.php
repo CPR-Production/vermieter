@@ -1,0 +1,507 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class Vermieter_Shortcodes {
+    public static function register() {
+        add_shortcode('vermieter_properties', [__CLASS__, 'properties_shortcode']);
+        add_shortcode('vermieter_apartments', [__CLASS__, 'apartments_shortcode']);
+        add_shortcode('vermieter_form', [__CLASS__, 'billing_costs_shortcode']);
+        add_shortcode('vermieter_rechnungen', [__CLASS__, 'vermieter_list_shortcode']);
+        add_shortcode('vermieter_abrechnung', [__CLASS__, 'billing_shortcode']);
+        add_shortcode('vermieter_cost_category_definitions', [__CLASS__, 'cost_category_definitions_shortcode']);
+        add_shortcode('vermieter_property_cost_categories', [__CLASS__, 'property_cost_categories_shortcode']);
+        add_shortcode('vermieter_distribution_key_definitions', [__CLASS__, 'distribution_key_definitions_shortcode']);
+        add_shortcode('vermieter_property_distribution_keys', [__CLASS__, 'property_distribution_keys_shortcode']);
+        add_shortcode('vermieter_costs_table', [__CLASS__, 'costs_table_shortcode']);
+        add_shortcode('vermieter_tenants', [__CLASS__, 'tenants_shortcode']);
+        add_shortcode('vermieter_apartment_tenants', [__CLASS__, 'apartment_tenants_shortcode']);
+    }
+
+    public static function tenants_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_tenant') {
+            check_admin_referer('vm_save_tenant');
+
+            $id = Vermieter_Tenants::add([
+                'salutation' => sanitize_text_field(wp_unslash($_POST['vm_salutation'] ?? '')),
+                'first_name' => sanitize_text_field(wp_unslash($_POST['vm_first_name'] ?? '')),
+                'last_name'  => sanitize_text_field(wp_unslash($_POST['vm_last_name'] ?? '')),
+                'email'      => sanitize_email(wp_unslash($_POST['vm_email'] ?? '')),
+                'phone'      => sanitize_text_field(wp_unslash($_POST['vm_phone'] ?? '')),
+                'iban'       => sanitize_text_field(wp_unslash($_POST['vm_iban'] ?? '')),
+                'bank_name'  => sanitize_text_field(wp_unslash($_POST['vm_bank_name'] ?? '')),
+            ]);
+
+            $message = $id ? 'Mieter gespeichert.' : 'Mieter konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-tenants.php', [
+            'message' => $message,
+            'tenants' => Vermieter_Tenants::get_all_by_user(),
+        ]);
+    }
+
+    public static function apartment_tenants_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+        $selected_year = isset($_REQUEST['vm_year']) ? (int) $_REQUEST['vm_year'] : (int) current_time('Y');
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_apartment_tenant') {
+            check_admin_referer('vm_save_apartment_tenant');
+
+            $id = Vermieter_Apartment_Tenants::add([
+                'apartment_id'  => (int) ($_POST['vm_apartment_id'] ?? 0),
+                'tenant_id'     => (int) ($_POST['vm_tenant_id'] ?? 0),
+                'move_in_date'  => sanitize_text_field(wp_unslash($_POST['vm_move_in_date'] ?? '')),
+                'move_out_date' => sanitize_text_field(wp_unslash($_POST['vm_move_out_date'] ?? '')),
+            ]);
+
+            $message = $id
+                ? 'Mieter der Wohnung zugeordnet.'
+                : 'Zuordnung konnte nicht gespeichert werden. Bitte Zeiträume prüfen.';
+        }
+
+        return vm_render_template('form-apartment-tenants.php', [
+            'message'           => $message,
+            'selected_year'     => $selected_year,
+            'apartments'        => Vermieter_Apartments::get_all_by_user(),
+            'tenants'           => Vermieter_Tenants::get_all_by_user(),
+            'apartment_tenants' => Vermieter_Apartment_Tenants::get_all_by_user(),
+        ]);
+    }
+
+    public static function cost_category_definitions_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_cost_category_definition') {
+            check_admin_referer('vm_save_cost_category_definition');
+
+            $id = Vermieter_Cost_Category_Definitions::add([
+                'name'                    => sanitize_text_field(wp_unslash($_POST['vm_name'] ?? '')),
+                'description'             => sanitize_textarea_field(wp_unslash($_POST['vm_description'] ?? '')),
+                'default_allocation_type' => sanitize_text_field(wp_unslash($_POST['vm_default_allocation_type'] ?? 'wohnflaeche')),
+                'default_is_recurring'    => !empty($_POST['vm_default_is_recurring']) ? 1 : 0,
+            ]);
+
+            $message = $id ? 'Kategoriedefinition gespeichert.' : 'Kategoriedefinition konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-cost-category-definitions.php', [
+            'message'             => $message,
+            'definitions'         => Vermieter_Cost_Category_Definitions::get_all_by_user(),
+            'apportionment_types' => Vermieter_Apportionment_Types::get_options(),
+        ]);
+    }
+
+    public static function property_cost_categories_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property_cost_category') {
+            check_admin_referer('vm_save_property_cost_category');
+
+            $id = Vermieter_Property_Cost_Categories::add([
+                'property_id'                  => (int) ($_POST['vm_property_id'] ?? 0),
+                'cost_category_definition_id'  => (int) ($_POST['vm_cost_category_definition_id'] ?? 0),
+                'allocation_type'              => sanitize_text_field(wp_unslash($_POST['vm_allocation_type'] ?? 'wohnflaeche')),
+                'property_distribution_key_id' => (int) ($_POST['vm_property_distribution_key_id'] ?? 0),
+                'is_recurring'                 => !empty($_POST['vm_is_recurring']) ? 1 : 0,
+            ]);
+
+            $message = $id ? 'Objekt-Kategorie gespeichert.' : 'Objekt-Kategorie konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-property-cost-categories.php', [
+            'message'             => $message,
+            'properties'          => Vermieter_Properties::get_all(),
+            'definitions'         => Vermieter_Cost_Category_Definitions::get_all_by_user(),
+            'property_categories' => Vermieter_Property_Cost_Categories::get_all_by_user(),
+            'assigned_keys'       => Vermieter_Property_Distribution_Keys::get_all_by_user(),
+            'apportionment_types' => Vermieter_Apportionment_Types::get_options(),
+        ]);
+    }
+
+    public static function costs_table_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $period = vm_default_period();
+        $message = '';
+
+        $selected_property_id = isset($_REQUEST['vm_property_id']) ? (int) $_REQUEST['vm_property_id'] : 0;
+        $property_categories = $selected_property_id
+            ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id)
+            : [];
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_costs_table') {
+            check_admin_referer('vm_save_costs_table');
+
+            $selected_property_id = (int) ($_POST['vm_property_id'] ?? 0);
+            $property_categories = $selected_property_id
+                ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id)
+                : [];
+
+            $count = Vermieter_Costs::add_multiple(
+                [
+                    'property_id'  => $selected_property_id,
+                    'period_year'  => (int) ($_POST['vm_period_year'] ?? 0),
+                    'invoice_date' => sanitize_text_field(wp_unslash($_POST['vm_invoice_date'] ?? '')),
+                    'period_start' => sanitize_text_field(wp_unslash($_POST['vm_period_start'] ?? '')),
+                    'period_end'   => sanitize_text_field(wp_unslash($_POST['vm_period_end'] ?? '')),
+                ],
+                $_POST['vm_rows'] ?? []
+            );
+
+            $message = $count ? $count . ' Position(en) gespeichert.' : 'Keine Positionen gespeichert.';
+        }
+
+        return vm_render_template('form-costs-table.php', [
+            'message'              => $message,
+            'period'               => $period,
+            'properties'           => Vermieter_Properties::get_all(),
+            'selected_property_id' => $selected_property_id,
+            'property_categories'  => $property_categories,
+        ]);
+    }
+
+    public static function property_distribution_keys_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+        $distribution_values_map = [];
+        $apartments_by_property = [];
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property_distribution_key') {
+            check_admin_referer('vm_save_property_distribution_key');
+
+            $id = Vermieter_Property_Distribution_Keys::add([
+                'property_id'                    => (int) ($_POST['vm_property_id'] ?? 0),
+                'distribution_key_definition_id' => (int) ($_POST['vm_distribution_key_definition_id'] ?? 0),
+            ]);
+
+            $message = $id ? 'Schlüssel dem Objekt zugeordnet.' : 'Zuordnung konnte nicht gespeichert werden.';
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_inline_distribution_values') {
+            check_admin_referer('vm_save_inline_distribution_values');
+
+            $all_values = $_POST['vm_distribution_values'] ?? [];
+            $saved_any = false;
+
+            foreach ($all_values as $property_distribution_key_id => $values) {
+                $property_distribution_key_id = (int) $property_distribution_key_id;
+
+                if ($property_distribution_key_id > 0 && is_array($values)) {
+                    Vermieter_Apartment_Distribution_Values::save_values($property_distribution_key_id, $values);
+                    $saved_any = true;
+                }
+            }
+
+            $message = $saved_any ? 'Verteilwerte gespeichert.' : 'Keine Verteilwerte gespeichert.';
+        }
+
+        $assigned_keys = Vermieter_Property_Distribution_Keys::get_all_by_user();
+
+        foreach ($assigned_keys as $key) {
+            $property_id = (int) $key->property_id;
+            $property_distribution_key_id = (int) $key->id;
+
+            if (!isset($apartments_by_property[$property_id])) {
+                $apartments_by_property[$property_id] = Vermieter_Apartments::get_by_property($property_id);
+            }
+
+            $distribution_values_map[$property_distribution_key_id] =
+                Vermieter_Apartment_Distribution_Values::get_values_by_property_distribution_key($property_distribution_key_id);
+        }
+
+        return vm_render_template('form-property-distribution-keys.php', [
+            'message'                 => $message,
+            'properties'              => Vermieter_Properties::get_all(),
+            'definitions'             => Vermieter_Distribution_Key_Definitions::get_all_by_user(),
+            'assigned_keys'           => $assigned_keys,
+            'apartments_by_property'  => $apartments_by_property,
+            'distribution_values_map' => $distribution_values_map,
+        ]);
+    }
+
+    public static function distribution_key_definitions_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_distribution_key_definition') {
+            check_admin_referer('vm_save_distribution_key_definition');
+
+            $id = Vermieter_Distribution_Key_Definitions::add([
+                'label'       => sanitize_text_field(wp_unslash($_POST['vm_label'] ?? '')),
+                'unit_code'   => sanitize_text_field(wp_unslash($_POST['vm_unit_code'] ?? '')),
+                'total_value' => vm_post_decimal('vm_total_value'),
+            ]);
+
+            $message = $id ? 'Schlüsseldefinition gespeichert.' : 'Schlüsseldefinition konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-distribution-key-definitions.php', [
+            'message'     => $message,
+            'definitions' => Vermieter_Distribution_Key_Definitions::get_all_by_user(),
+        ]);
+    }
+
+    public static function cost_categories_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_cost_category') {
+            check_admin_referer('vm_save_cost_category');
+
+            $property_distribution_key_id = (int) ($_POST['vm_property_distribution_key_id'] ?? 0);
+            $allocation_type = sanitize_text_field(wp_unslash($_POST['vm_allocation_type'] ?? 'wohnflaeche'));
+            $property_id = 0;
+
+            if ($property_distribution_key_id > 0) {
+                $selected_key = Vermieter_Property_Distribution_Keys::get($property_distribution_key_id);
+                if ($selected_key) {
+                    $property_id = (int) $selected_key->property_id;
+                }
+            }
+
+            $result = Vermieter_Property_Cost_Categories::add([
+                'property_id'                  => $property_id,
+                'cost_category_definition_id'  => (int) ($_POST['vm_cost_category_definition_id'] ?? 0),
+                'allocation_type'              => $allocation_type,
+                'property_distribution_key_id' => $property_distribution_key_id,
+                'is_recurring'                 => !empty($_POST['vm_is_recurring']) ? 1 : 0,
+            ]);
+
+            $message = is_array($result) && !empty($result['message'])
+                ? $result['message']
+                : 'Objekt-Kategorie konnte nicht gespeichert werden.';
+        }
+
+        $properties = Vermieter_Properties::get_all();
+        $assigned_keys = Vermieter_Property_Distribution_Keys::get_all_by_user();
+
+        $assigned_keys_by_property = [];
+        foreach ($assigned_keys as $key) {
+            $assigned_keys_by_property[(int) $key->property_id][] = $key;
+        }
+
+        error_log('Vermieter Property Cost Categories: ungültiger Objekt-Schlüssel. property_distribution_key_id=' . $property_distribution_key_id);
+        
+        return vm_render_template('form-property-cost-categories.php', [
+            'message'             => $message,
+            'definitions'         => Vermieter_Cost_Category_Definitions::get_all_by_user(),
+            'property_categories' => Vermieter_Property_Cost_Categories::get_all_by_user(),
+            'assigned_keys'       => Vermieter_Property_Distribution_Keys::get_all_by_user(),
+            'apportionment_types' => Vermieter_Apportionment_Types::get_options(),
+        ]);
+    }
+
+    public static function vermieter_list_shortcode() { 
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+        return 0;
+    }
+
+    public static function properties_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property') {
+            check_admin_referer('vm_save_property');
+
+            $id = Vermieter_Properties::add([
+                'name'         => sanitize_text_field(wp_unslash($_POST['vm_property_name'] ?? '')),
+                'street'       => sanitize_text_field(wp_unslash($_POST['vm_property_street'] ?? '')),
+                'house_number' => sanitize_text_field(wp_unslash($_POST['vm_property_house_number'] ?? '')),
+                'zip_code'     => sanitize_text_field(wp_unslash($_POST['vm_property_zip_code'] ?? '')),
+                'city'         => sanitize_text_field(wp_unslash($_POST['vm_property_city'] ?? '')),
+            ]);
+
+            $message = $id ? 'Objekt gespeichert.' : 'Objekt konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-properties.php', [
+            'message'    => $message,
+            'properties' => Vermieter_Properties::get_all(),
+        ]);
+    }
+
+    public static function apartments_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_apartment') {
+            check_admin_referer('vm_save_apartment');
+
+            $id = Vermieter_Apartments::add([
+                'property_id'     => (int) ($_POST['vm_property_id'] ?? 0),
+                'name'            => sanitize_text_field(wp_unslash($_POST['vm_apartment_name'] ?? '')),
+                'wohnflaeche'     => vm_post_decimal('vm_wohnflaeche'),
+                'personen'        => (int) ($_POST['vm_personen'] ?? 0),
+            ]);
+
+            $message = $id ? 'Wohnung gespeichert.' : 'Wohnung konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-apartments.php', [
+            'message'    => $message,
+            'properties' => Vermieter_Properties::get_all(),
+            'apartments' => Vermieter_Apartments::get_all_by_user(),
+        ]);
+    }
+
+    public static function billing_costs_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $period = vm_default_period();
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_cost') {
+            check_admin_referer('vm_save_cost');
+
+            $id = Vermieter_Costs::add([
+                'property_id'               => (int) ($_POST['vm_property_id'] ?? 0),
+                'property_cost_category_id' => (int) ($_POST['vm_property_cost_category_id'] ?? 0),
+                'name'                      => sanitize_text_field(wp_unslash($_POST['vm_name'] ?? '')),
+                'betrag'                    => vm_post_decimal('vm_betrag'),
+                'invoice_date'              => sanitize_text_field(wp_unslash($_POST['vm_invoice_date'] ?? '')),
+                'period_start'              => sanitize_text_field(wp_unslash($_POST['vm_period_start'] ?? '')),
+                'period_end'                => sanitize_text_field(wp_unslash($_POST['vm_period_end'] ?? '')),
+                'period_year'               => (int) ($_POST['vm_period_year'] ?? 0),
+            ]);
+
+            $message = $id ? 'Kosten gespeichert.' : 'Kosten konnten nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-costs.php', [
+            'message'             => $message,
+            'period'              => $period,
+            'properties'          => Vermieter_Properties::get_all(),
+            'property_categories' => Vermieter_Property_Cost_Categories::get_all_by_user(),
+            'costs'               => Vermieter_Costs::get_all_by_user(),
+        ]);
+    }
+
+    public static function billing_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $properties = Vermieter_Properties::get_all();
+        $selected_property_id = isset($_GET['vm_property_id']) ? (int) $_GET['vm_property_id'] : (!empty($properties) ? (int) $properties[0]->id : 0);
+        $selected_year = isset($_GET['vm_year']) ? (int) $_GET['vm_year'] : (int) current_time('Y');
+
+        return vm_render_template('billing-table.php', [
+            'properties'           => $properties,
+            'selected_property_id' => $selected_property_id,
+            'selected_year'        => $selected_year,
+            'billing'              => $selected_property_id ? Vermieter_Billing::generate($selected_property_id, $selected_year) : [],
+        ]);
+    }
+
+    public static function distribution_keys_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_distribution_key') {
+            check_admin_referer('vm_save_distribution_key');
+
+            $id = Vermieter_Distribution_Keys::add([
+                'property_id' => (int) ($_POST['vm_property_id'] ?? 0),
+                'label'       => sanitize_text_field(wp_unslash($_POST['vm_label'] ?? '')),
+                'unit_code'   => sanitize_text_field(wp_unslash($_POST['vm_unit_code'] ?? '')),
+                'total_value' => vm_post_decimal('vm_total_value'),
+            ]);
+
+            $message = $id ? 'Verteilerschlüssel gespeichert.' : 'Verteilerschlüssel konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-distribution-keys.php', [
+            'message'           => $message,
+            'properties'        => Vermieter_Properties::get_all(),
+            'distribution_keys' => Vermieter_Distribution_Keys::get_all_by_user(),
+        ]);
+    }
+
+    public static function distribution_values_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $properties = Vermieter_Properties::get_all();
+        $selected_property_id = isset($_GET['vm_property_id']) ? (int) $_GET['vm_property_id'] : (!empty($properties) ? (int) $properties[0]->id : 0);
+        $distribution_keys = $selected_property_id ? Vermieter_Distribution_Keys::get_by_property($selected_property_id) : [];
+        $selected_distribution_key_id = isset($_GET['vm_distribution_key_id']) ? (int) $_GET['vm_distribution_key_id'] : (!empty($distribution_keys) ? (int) $distribution_keys[0]->id : 0);
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_distribution_values') {
+            check_admin_referer('vm_save_distribution_values');
+
+            $selected_distribution_key_id = (int) ($_POST['vm_distribution_key_id'] ?? 0);
+            $result = Vermieter_Apartment_Distribution_Values::save_values(
+                $selected_distribution_key_id,
+                $_POST['vm_distribution_values'] ?? []
+            );
+
+            $message = $result ? 'Verteilwerte gespeichert.' : 'Verteilwerte konnten nicht gespeichert werden.';
+        }
+
+        $distribution_key = $selected_distribution_key_id ? Vermieter_Distribution_Keys::get($selected_distribution_key_id) : null;
+        $apartments = $selected_property_id ? Vermieter_Apartments::get_by_property($selected_property_id) : [];
+        $values = $selected_distribution_key_id ? Vermieter_Apartment_Distribution_Values::get_values_by_distribution_key($selected_distribution_key_id) : [];
+        $sum_values = $selected_distribution_key_id ? Vermieter_Apartment_Distribution_Values::get_sum_by_distribution_key($selected_distribution_key_id) : 0;
+
+        return vm_render_template('form-apartment-distribution-values.php', [
+            'message'                      => $message,
+            'properties'                   => $properties,
+            'selected_property_id'         => $selected_property_id,
+            'distribution_keys'            => $distribution_keys,
+            'selected_distribution_key_id' => $selected_distribution_key_id,
+            'distribution_key'             => $distribution_key,
+            'apartments'                   => $apartments,
+            'values'                       => $values,
+            'sum_values'                   => $sum_values,
+        ]);
+    }
+}
