@@ -2,7 +2,7 @@
 /*
 Plugin Name: Vermieter / Nebenkostenabrechnung
 Description: Nebenkostenverwaltung für Vermieter
-Version: 0.8.0
+Version: 0.8.1
 Author: Christian Husemann
 */
 
@@ -10,8 +10,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('VERMIETER_VERSION', '0.8.0');
-define('VERMIETER_DB_VERSION', '0.8.0');
+define('VERMIETER_VERSION', '0.8.1');
+define('VERMIETER_DB_VERSION', '0.8.1');
 define('VERMIETER_PLUGIN_FILE', __FILE__);
 define('VERMIETER_PATH', plugin_dir_path(__FILE__));
 define('VERMIETER_URL', plugin_dir_url(__FILE__));
@@ -21,6 +21,9 @@ require_once VERMIETER_PATH . 'includes/class-activator.php';
 require_once VERMIETER_PATH . 'includes/class-db.php';
 require_once VERMIETER_PATH . 'includes/class-shortcodes.php';
 
+require_once VERMIETER_PATH . 'modules/class-tenancy-rent-terms.php';
+require_once VERMIETER_PATH . 'modules/class-tenancy-advance-terms.php';
+require_once VERMIETER_PATH . 'modules/class-tenant-payments.php';
 require_once VERMIETER_PATH . 'modules/class-apportionment-types.php';
 require_once VERMIETER_PATH . 'modules/class-properties.php';
 require_once VERMIETER_PATH . 'modules/class-apartments.php';
@@ -40,3 +43,12 @@ register_activation_hook(VERMIETER_PLUGIN_FILE, ['Vermieter_Activator', 'activat
 
 add_action('plugins_loaded', ['Vermieter_DB', 'maybe_upgrade']);
 add_action('init', ['Vermieter_Shortcodes', 'register']);
+
+add_action('wp_enqueue_scripts', function () {
+    wp_enqueue_style(
+        'vermieter-css',
+        VERMIETER_URL . 'assets/css/vermieter.css',
+        [],
+        VERMIETER_VERSION
+    );
+});

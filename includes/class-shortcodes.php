@@ -18,8 +18,140 @@ class Vermieter_Shortcodes {
         add_shortcode('vermieter_tenants', [__CLASS__, 'tenants_shortcode']);
         add_shortcode('vermieter_apartment_tenants', [__CLASS__, 'apartment_tenants_shortcode']);
         add_shortcode('vermieter_property_dashboard', [__CLASS__, 'property_dashboard_shortcode']);
+        add_shortcode('vermieter_tenancy_rent_terms', [__CLASS__, 'tenancy_rent_terms_shortcode']);
+        add_shortcode('vermieter_tenancy_advance_terms', [__CLASS__, 'tenancy_advance_terms_shortcode']);
+        add_shortcode('vermieter_tenant_payments', [__CLASS__, 'tenant_payments_shortcode']);
+        add_shortcode('vermieter_mietkonto', [__CLASS__, 'mietkonto_shortcode']);
     }
 
+    public static function mietkonto_shortcode($atts) {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $atts = shortcode_atts([
+            'apartment_tenant_id' => 0,
+        ], $atts, 'vermieter_mietkonto');
+
+        $selected_id = (int) $atts['apartment_tenant_id'];
+
+        if ($selected_id <= 0 && isset($_GET['vm_apartment_tenant_id'])) {
+            $selected_id = (int) $_GET['vm_apartment_tenant_id'];
+        }
+
+        $apartment_tenants = Vermieter_Apartment_Tenants::get_all_by_user();
+        $ledger_rows = $selected_id > 0
+            ? Vermieter_Tenant_Payments::get_ledger_rows_by_apartment_tenant($selected_id)
+            : [];
+
+        return vm_render_template('mietkonto.php', [
+            'apartment_tenants' => $apartment_tenants,
+            'selected_id'       => $selected_id,
+            'ledger_rows'       => $ledger_rows,
+        ]);
+    }
+
+    public static function tenancy_rent_terms_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_tenancy_rent_term') {
+            check_admin_referer('vm_save_tenancy_rent_term');
+
+            $id = Vermieter_Tenancy_Rent_Terms::add([
+                'apartment_tenant_id' => (int) ($_POST['vm_apartment_tenant_id'] ?? 0),
+                'valid_from'          => sanitize_text_field(wp_unslash($_POST['vm_valid_from'] ?? '')),
+                'cold_rent'           => vm_post_decimal('vm_cold_rent'),
+            ]);
+
+            $message = $id ? 'Kaltmiete gespeichert.' : 'Kaltmiete konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-tenancy-rent-terms.php', [
+            'message'           => $message,
+            'apartment_tenants' => Vermieter_Apartment_Tenants::get_all_by_user(),
+            'rent_terms'        => Vermieter_Tenancy_Rent_Terms::get_all_by_user(),
+        ]);
+    }
+
+    public static function tenancy_advance_terms_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_tenancy_advance_term') {
+            check_admin_referer('vm_save_tenancy_advance_term');
+
+            $id = Vermieter_Tenancy_Advance_Terms::add([
+                'apartment_tenant_id' => (int) ($_POST['vm_apartment_tenant_id'] ?? 0),
+                'valid_from'          => sanitize_text_field(wp_unslash($_POST['vm_valid_from'] ?? '')),
+                'nk_advance'          => vm_post_decimal('vm_nk_advance'),
+                'hk_advance'          => vm_post_decimal('vm_hk_advance'),
+            ]);
+
+            $message = $id ? 'Nebenkosten-/Heizkosten-Vorauszahlung gespeichert.' : 'Vorauszahlung konnte nicht gespeichert werden.';
+        }
+
+        return vm_render_template('form-tenancy-advance-terms.php', [
+            'message'           => $message,
+            'apartment_tenants' => Vermieter_Apartment_Tenants::get_all_by_user(),
+            'advance_terms'     => Vermieter_Tenancy_Advance_Terms::get_all_by_user(),
+        ]);
+    }
+
+    public static function tenant_payments_shortcode() {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_open_payments_table') {
+            check_admin_referer('vm_save_open_payments_table');
+
+            $rows = $_POST['vm_rows'] ?? [];
+            $saved = 0;
+
+            foreach ($rows as $row) {
+                $apartment_tenant_id = (int) ($row['apartment_tenant_id'] ?? 0);
+                $payment_month = sanitize_text_field($row['payment_month'] ?? '');
+                $payment_date = sanitize_text_field($row['payment_date'] ?? '');
+                $is_paid = !empty($row['is_paid']) ? 1 : 0;
+
+                $target = Vermieter_Tenant_Payments::get_monthly_target($apartment_tenant_id, $payment_month);
+
+                $amount_paid = $is_paid
+                    ? (float) $target['total_target']
+                    : (isset($row['amount_paid']) ? (float) str_replace(',', '.', str_replace('.', '', (string) $row['amount_paid'])) : 0);
+
+                $id = Vermieter_Tenant_Payments::add_or_update([
+                    'apartment_tenant_id' => $apartment_tenant_id,
+                    'payment_month'       => $payment_month,
+                    'payment_date'        => $payment_date,
+                    'amount_paid'         => $amount_paid,
+                    'is_paid'             => $is_paid,
+                    'note'                => sanitize_textarea_field($row['note'] ?? ''),
+                ]);
+
+                if ($id) {
+                    $saved++;
+                }
+            }
+
+            $message = $saved > 0 ? $saved . ' Zahlung(en) gespeichert.' : 'Keine Zahlung gespeichert.';
+        }
+
+        return vm_render_template('form-tenant-payments.php', [
+            'message'       => $message,
+            'open_rows'     => Vermieter_Tenant_Payments::get_open_payment_rows(),
+            'payments'      => Vermieter_Tenant_Payments::get_all_by_user(),
+        ]);
+    }
     public static function property_dashboard_shortcode($atts) {
         if (!is_user_logged_in()) {
             return 'Bitte einloggen.';

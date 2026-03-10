@@ -21,6 +21,53 @@ class Vermieter_DB {
         $table_apartment_distribution_values = $wpdb->prefix . 'vm_apartment_distribution_values';
         $table_tenants                      = $wpdb->prefix . 'vm_tenants';
         $table_apartment_tenants            = $wpdb->prefix . 'vm_apartment_tenants';
+        $table_tenancy_rent_terms           = $wpdb->prefix . 'vm_tenancy_rent_terms';
+        $table_tenancy_advance_terms        = $wpdb->prefix . 'vm_tenancy_advance_terms';
+        $table_tenant_payments              = $wpdb->prefix . 'vm_tenant_payments';
+
+        $sql_tenancy_rent_terms = "CREATE TABLE $table_tenancy_rent_terms (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            apartment_tenant_id BIGINT UNSIGNED NOT NULL,
+            valid_from DATE NOT NULL,
+            cold_rent DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY apartment_tenant_id (apartment_tenant_id),
+            KEY valid_from (valid_from)
+        ) $charset_collate;";
+
+        $sql_tenancy_advance_terms = "CREATE TABLE $table_tenancy_advance_terms (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            apartment_tenant_id BIGINT UNSIGNED NOT NULL,
+            valid_from DATE NOT NULL,
+            nk_advance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            hk_advance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY apartment_tenant_id (apartment_tenant_id),
+            KEY valid_from (valid_from)
+        ) $charset_collate;";
+
+        $sql_tenant_payments = "CREATE TABLE $table_tenant_payments (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            apartment_tenant_id BIGINT UNSIGNED NOT NULL,
+            payment_month DATE NOT NULL,
+            payment_date DATE NULL,
+            amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            is_paid TINYINT(1) NOT NULL DEFAULT 0,
+            note TEXT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY tenant_payment_month (apartment_tenant_id, payment_month),
+            KEY user_id (user_id),
+            KEY apartment_tenant_id (apartment_tenant_id),
+            KEY payment_month (payment_month)
+        ) $charset_collate;";
 
         $sql_tenants = "CREATE TABLE $table_tenants (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -197,7 +244,10 @@ class Vermieter_DB {
         dbDelta($sql_apartment_distribution_values);
         dbDelta($sql_tenants);
         dbDelta($sql_apartment_tenants);
-        
+        dbDelta($sql_tenancy_rent_terms);
+        dbDelta($sql_tenancy_advance_terms);
+        dbDelta($sql_tenant_payments);
+
         self::seed_apportionment_types();
         self::install_default_distribution_key_definitions();
         self::install_default_cost_category_definitions();

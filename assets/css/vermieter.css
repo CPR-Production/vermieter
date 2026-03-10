@@ -1,0 +1,114 @@
+/* Vermieter Tabellen */
+.vm-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+/* Kopfzeile */
+.vm-wrap table thead th {
+    background: #f3f4f6;
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 2px solid #ddd;
+}
+
+/* Zellen */
+.vm-wrap table th,
+.vm-wrap table td {
+ /* padding: 10px 14px; */ 
+    padding: 5px 5px;
+    vertical-align: middle;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Zebra */
+.vm-wrap table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+/* Hover */
+.vm-wrap table tbody tr:hover {
+    background: #f0f6ff;
+}
+
+/* Zahlen rechtsbündig */
+.vm-wrap table td:nth-child(5),
+.vm-wrap table td:nth-child(6),
+.vm-wrap table td:nth-child(7),
+.vm-wrap table td:nth-child(8),
+.vm-wrap table td:nth-child(9) {
+    text-align: right;
+}
+
+/* Inputs in Tabellen */
+.vm-wrap table input[type="text"],
+.vm-wrap table input[type="date"],
+.vm-wrap table select {
+    width: 100%;
+    padding: 4px 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+/* schmale Spalten */
+.vm-col-usage {
+    width: 70px;
+    text-align: center;
+}
+
+.vm-col-money {
+    width: 73px;
+    text-align: center;
+    padding: 0px 4px;
+    font-size: 10px;
+}
+
+.vm-col-soll {
+    width: 100px;
+    font-weight: 600;
+}
+
+.vm-wrap table {
+    table-layout: fixed;
+}
+
+/* Buttons */
+.vm-wrap button,
+.vm-wrap input[type="submit"] {
+    background: #2271b1;
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.vm-wrap button:hover,
+.vm-wrap input[type="submit"]:hover {
+    background: #135e96;
+}
+
+.vm-error-row {
+    background: #ffe5e5 !important;
+}
+
+.vm-error-row td {
+    color: #a40000;
+    font-weight: 500;
+}
+
+.vm-warning {
+    background: #fff4e5;
+    border-left: 4px solid #f0ad4e;
+    padding: 12px 16px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+button:disabled {
+    background: #ccc !important;
+    cursor: not-allowed;
+}
