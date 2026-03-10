@@ -406,7 +406,11 @@ class Vermieter_Shortcodes {
 
             if ($record_id > 0) {
                 $result = Vermieter_Apartments::update($record_id, $data);
-                $message = $result ? 'Wohnung aktualisiert.' : 'Wohnung konnte nicht aktualisiert werden.';
+
+                $message = !empty($result['message'])
+                    ? $result['message']
+                    : 'Wohnung konnte nicht aktualisiert werden.';
+
                 $edit_item = $record_id ? Vermieter_Apartments::get($record_id) : null;
             } else {
                 $id = Vermieter_Apartments::add($data);

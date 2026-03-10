@@ -2,6 +2,11 @@
 
 <?php
 $edit_item = isset($edit_item) ? $edit_item : null;
+$existing_dependencies = [];
+
+if ($edit_item) {
+    $existing_dependencies = Vermieter_Apartments::get_existing_dependencies((int) $edit_item->id);
+}
 ?>
 
 <div class="vm-wrap">
@@ -9,6 +14,15 @@ $edit_item = isset($edit_item) ? $edit_item : null;
 
     <?php if (!empty($message)) : ?>
         <p><strong><?php echo esc_html($message); ?></strong></p>
+    <?php endif; ?>
+
+    <?php if ($edit_item && !empty($existing_dependencies)) : ?>
+        <p><strong>Hinweis:</strong> Ein Typwechsel ist aktuell gesperrt.</p>
+        <ul>
+            <?php foreach ($existing_dependencies as $dependency) : ?>
+                <li><?php echo esc_html($dependency); ?></li>
+            <?php endforeach; ?>
+        </ul>
     <?php endif; ?>
 
     <form method="post">
