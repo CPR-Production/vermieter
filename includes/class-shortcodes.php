@@ -17,6 +17,50 @@ class Vermieter_Shortcodes {
         add_shortcode('vermieter_costs_table', [__CLASS__, 'costs_table_shortcode']);
         add_shortcode('vermieter_tenants', [__CLASS__, 'tenants_shortcode']);
         add_shortcode('vermieter_apartment_tenants', [__CLASS__, 'apartment_tenants_shortcode']);
+        add_shortcode('vermieter_property_dashboard', [__CLASS__, 'property_dashboard_shortcode']);
+    }
+
+    public static function property_dashboard_shortcode($atts) {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $atts = shortcode_atts([
+            'property_id' => 0,
+        ], $atts, 'vermieter_property_dashboard');
+
+        $properties = Vermieter_Properties::get_all();
+        $selected_property_id = (int) $atts['property_id'];
+
+        if ($selected_property_id <= 0 && isset($_GET['vm_property_id'])) {
+            $selected_property_id = (int) $_GET['vm_property_id'];
+        }
+
+        if ($selected_property_id <= 0 && !empty($properties)) {
+            $selected_property_id = (int) $properties[0]->id;
+        }
+
+        $property = $selected_property_id ? Vermieter_Properties::get($selected_property_id) : null;
+        $apartments = $selected_property_id ? Vermieter_Apartments::get_by_property($selected_property_id) : [];
+        $cost_categories = $selected_property_id ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id) : [];
+        $distribution_keys = $selected_property_id ? Vermieter_Property_Distribution_Keys::get_by_property($selected_property_id) : [];
+
+        $apartment_tenants = [];
+        if (!empty($apartments)) {
+            foreach ($apartments as $apartment) {
+                $apartment_tenants[$apartment->id] = Vermieter_Apartment_Tenants::get_by_apartment($apartment->id);
+            }
+        }
+
+        return vm_render_template('property-dashboard.php', [
+            'properties'            => $properties,
+            'selected_property_id'  => $selected_property_id,
+            'property'              => $property,
+            'apartments'            => $apartments,
+            'cost_categories'       => $cost_categories,
+            'distribution_keys'     => $distribution_keys,
+            'apartment_tenants'     => $apartment_tenants,
+        ]);
     }
 
     public static function tenants_shortcode() {
