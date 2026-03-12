@@ -115,18 +115,25 @@
                                 </label>
                             </td>
                             <td>
+                                <?php if ($is_error_row) : ?>
+                                    <a class="vm-action-button"
+                                        href="<?php echo esc_url(site_url('/mieter-miete-nebenkosten/?vm_apartment_tenant_id=' . (int) $row['apartment_tenant_id'])); ?>"
+                                    >
+                                        Miete festlegen
+                                    </a>
+                                <?php else : ?>
                                 <input
                                     type="text"
                                     name="vm_rows[<?php echo esc_attr($index); ?>][note]"
                                     value="<?php echo esc_attr($existing->note ?? ''); ?>"
                                     <?php disabled($is_error_row, true); ?>
                                 >
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-
             <p>
                 <button type="submit">Offene Zahlungen speichern</button>
             </p>
