@@ -123,6 +123,10 @@ class Vermieter_Shortcodes {
                 $payment_date = sanitize_text_field($row['payment_date'] ?? '');
                 $is_paid = !empty($row['is_paid']) ? 1 : 0;
 
+                if ($apartment_tenant_id <= 0 || $payment_month === '') {
+                    continue;
+                }
+
                 $target = Vermieter_Tenant_Payments::get_monthly_target($apartment_tenant_id, $payment_month);
 
                 $amount_paid = $is_paid

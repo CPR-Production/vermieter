@@ -49,7 +49,7 @@
             <tbody>
                 <?php foreach ($ledger_rows as $row) : ?>
                     <tr>
-                        <td><?php echo esc_html($row['payment_month']); ?></td>
+                        <td><?php echo esc_html(date('m-Y', strtotime($row['payment_month']))); ?></td>
                         <td><?php echo esc_html(number_format((float) $row['soll'], 2, ',', '.')); ?></td>
                         <td><?php echo esc_html(number_format((float) $row['ist'], 2, ',', '.')); ?></td>
                         <td><?php echo esc_html(number_format((float) $row['differenz'], 2, ',', '.')); ?></td>

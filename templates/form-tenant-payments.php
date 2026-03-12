@@ -60,17 +60,20 @@
                         $default_amount_paid = isset($existing->amount_paid)
                             ? (float) $existing->amount_paid
                             : (float) $row['total_target'];
+                        $is_error_row = ((float) $row['total_target'] <= 0);
                         ?>
-                        <tr class="<?php echo ((float)$row['total_target'] <= 0) ? 'vm-error-row' : ''; ?>">
+                        <tr class="<?php echo $is_error_row ? 'vm-error-row' : ''; ?>">
                             <td><?php echo esc_html($row['property_name']); ?></td>
                             <td><?php echo esc_html($row['apartment_name']); ?></td>
                             <td><?php echo esc_html($row['tenant_name']); ?></td>
                             <td>
                                 <?php echo esc_html(date('d.m.Y', strtotime($row['payment_month']))); ?>
+                            <?php if (!$is_error_row) : ?>
                                 <input type="hidden" name="vm_rows[<?php echo esc_attr($index); ?>][apartment_tenant_id]" value="<?php echo esc_attr($row['apartment_tenant_id']); ?>">
                                 <input type="hidden" name="vm_rows[<?php echo esc_attr($index); ?>][payment_month]" value="<?php echo esc_attr($row['payment_month']); ?>">
                                 <input type="hidden" name="vm_rows[<?php echo esc_attr($index); ?>][default_payment_date]" value="<?php echo esc_attr($row['payment_month']); ?>">
                                 <input type="hidden" name="vm_rows[<?php echo esc_attr($index); ?>][default_amount_paid]" value="<?php echo esc_attr(number_format((float) $row['total_target'], 2, '.', '')); ?>">
+                            <?php endif; ?>
                             </td>
                             <td>
                                 <?php
@@ -88,6 +91,7 @@
                                     type="date"
                                     name="vm_rows[<?php echo esc_attr($index); ?>][payment_date]"
                                     value="<?php echo esc_attr($default_payment_date); ?>"
+                                    <?php echo $is_error_row ? 'readonly' : ''; ?>
                                 >
                             </td>
                             <td>
@@ -95,6 +99,7 @@
                                     type="text"
                                     name="vm_rows[<?php echo esc_attr($index); ?>][amount_paid]"
                                     value="<?php echo esc_attr(str_replace('.', ',', number_format((float) $default_amount_paid, 2, '.', ''))); ?>"
+                                    <?php disabled($is_error_row, true); ?>
                                 >
                             </td>
                             <td>
@@ -104,6 +109,7 @@
                                         name="vm_rows[<?php echo esc_attr($index); ?>][is_paid]"
                                         value="1"
                                         <?php checked((int) ($existing->is_paid ?? 0), 1); ?>
+                                        <?php disabled($is_error_row, true); ?>
                                     >
                                     ja
                                 </label>
@@ -113,6 +119,7 @@
                                     type="text"
                                     name="vm_rows[<?php echo esc_attr($index); ?>][note]"
                                     value="<?php echo esc_attr($existing->note ?? ''); ?>"
+                                    <?php disabled($is_error_row, true); ?>
                                 >
                             </td>
                         </tr>
@@ -165,7 +172,3 @@
         <p>Noch keine Zahlungen erfasst.</p>
     <?php endif; ?>
 </div>
-<script>
-if (document.querySelector('.vm-error-row')) 
-    document.querySelector('button[type="submit"]').disabled = true;
-</script>

@@ -202,7 +202,7 @@ class Vermieter_DB {
             key_name VARCHAR(50) NOT NULL,
             description TEXT NULL,
             PRIMARY KEY (id),
-            KEY key_name (key_name)
+            UNIQUE KEY idx_key_name (key_name)
         ) $charset_collate;";
 
         $sql_properties = "CREATE TABLE $table_properties (
