@@ -22,6 +22,51 @@ class Vermieter_Shortcodes {
         add_shortcode('vermieter_tenancy_advance_terms', [__CLASS__, 'tenancy_advance_terms_shortcode']);
         add_shortcode('vermieter_tenant_payments', [__CLASS__, 'tenant_payments_shortcode']);
         add_shortcode('vermieter_mietkonto', [__CLASS__, 'mietkonto_shortcode']);
+        add_shortcode('vermieter_nebenkostenabrechnung', [__CLASS__, 'nebenkostenabrechnung_shortcode']);
+    }
+
+    public static function nebenkostenabrechnung_shortcode($atts) {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $atts = shortcode_atts([
+            'property_id' => 0,
+            'year'        => 0,
+        ], $atts, 'vermieter_nebenkostenabrechnung');
+
+        $properties = Vermieter_Properties::get_all();
+
+        $selected_property_id = (int) $atts['property_id'];
+        $selected_year = (int) $atts['year'];
+
+        if ($selected_property_id <= 0 && isset($_GET['vm_property_id'])) {
+            $selected_property_id = (int) $_GET['vm_property_id'];
+        }
+
+        if ($selected_year <= 0 && isset($_GET['vm_year'])) {
+            $selected_year = (int) $_GET['vm_year'];
+        }
+
+        if ($selected_property_id <= 0 && !empty($properties)) {
+            $selected_property_id = (int) $properties[0]->id;
+        }
+
+        if ($selected_year <= 0) {
+            $selected_year = (int) current_time('Y');
+        }
+
+        $statement = [];
+        if ($selected_property_id > 0 && $selected_year > 0) {
+            $statement = Vermieter_Nebenkosten_Billing::build_property_statement($selected_property_id, $selected_year);
+        }
+
+        return vm_render_template('nebenkostenabrechnung.php', [
+            'properties'           => $properties,
+            'selected_property_id' => $selected_property_id,
+            'selected_year'        => $selected_year,
+            'statement'            => $statement,
+        ]);
     }
 
     public static function mietkonto_shortcode($atts) {
@@ -196,6 +241,7 @@ class Vermieter_Shortcodes {
             'cost_categories'       => $cost_categories,
             'distribution_keys'     => $distribution_keys,
             'apartment_tenants'     => $apartment_tenants,
+            'apportionment_types'   => Vermieter_Apportionment_Types::get_options(),
         ]);
     }
 

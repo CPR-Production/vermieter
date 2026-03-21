@@ -1,5 +1,23 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
+<?php
+$vm_get_page_url = function ($slug, $query = []) {
+    $page = get_page_by_path($slug, OBJECT, 'page');
+
+    if (!$page) {
+        return '#';
+    }
+
+    $url = get_permalink($page->ID);
+
+    if (!empty($query)) {
+        $url = add_query_arg($query, $url);
+    }
+
+    return $url;
+};
+?>
+
 <div class="vm-wrap">
     <h2>Objekt-Übersicht</h2>
 
@@ -42,7 +60,7 @@
             ?>
         </p>
         <p>
-            <a href="<?php echo esc_url(site_url('/objekte/?edit_id=' . (int) $property->id)); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url($vm_get_page_url('vermieter-objekte', ['edit_id' => (int) $property->id])); ?>">Bearbeiten</a>
         </p>
     </div>
 
@@ -68,7 +86,7 @@
                             <td><?php echo esc_html(number_format((float) $apartment->wohnflaeche, 2, ',', '.')); ?></td>
                             <td><?php echo esc_html($apartment->personen); ?></td>
                             <td>
-                                <a href="<?php echo esc_url(site_url('/wohnungen/?edit_id=' . (int) $apartment->id)); ?>">Bearbeiten</a>
+                                <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnungen', ['edit_id' => (int) $apartment->id])); ?>">Bearbeiten</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -120,7 +138,7 @@
         <?php endif; ?>
 
         <p>
-            <a href="<?php echo esc_url(site_url('/wohnung-mieter/')); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnung-mieter')); ?>">Bearbeiten</a>
         </p>
     </div>
 
@@ -143,7 +161,13 @@
                         <tr>
                             <td><?php echo esc_html($category->name); ?></td>
                             <td><?php echo esc_html($category->applies_to_type_key); ?></td>
-                            <td><?php echo esc_html($category->allocation_type); ?></td>
+                            <td>
+                                <?php
+                                echo esc_html(
+                                    $apportionment_types[$category->allocation_type] ?? $category->allocation_type
+                                );
+                                ?>
+                            </td>
                             <td>
                                 <?php
                                 echo !empty($category->distribution_key_label)
@@ -161,7 +185,7 @@
         <?php endif; ?>
 
         <p>
-            <a href="<?php echo esc_url(site_url('/kostenarten-zuordnung/')); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url($vm_get_page_url('vermieter-objekt-kostenkategorien')); ?>">Bearbeiten</a>
         </p>
     </div>
 
@@ -194,7 +218,7 @@
         <?php endif; ?>
 
         <p>
-            <a href="<?php echo esc_url(site_url('/verteilerschluessel-zuordnung/')); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url($vm_get_page_url('vermieter-objekt-schluessel')); ?>">Bearbeiten</a>
         </p>
     </div>
 </div>
