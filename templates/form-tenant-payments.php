@@ -116,11 +116,16 @@
                             </td>
                             <td>
                                 <?php if ($is_error_row) : ?>
-                                    <a class="vm-action-button"
-                                        href="<?php echo esc_url(site_url('/mieter-miete-nebenkosten/?vm_apartment_tenant_id=' . (int) $row['apartment_tenant_id'])); ?>"
-                                    >
+                                    <?php
+                                    $rent_page = get_page_by_path('vermieter-kaltmieten', OBJECT, 'page');
+                                    $rent_url = $rent_page
+                                        ? add_query_arg(['vm_apartment_tenant_id' => (int) $row['apartment_tenant_id']], get_permalink($rent_page->ID))
+                                        : '#';
+                                    ?>
+                                    <a class="vm-action-button" href="<?php echo esc_url($rent_url); ?>">
                                         Miete festlegen
                                     </a>
+
                                 <?php else : ?>
                                 <input
                                     type="text"
