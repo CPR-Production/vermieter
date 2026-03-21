@@ -67,14 +67,6 @@ function vm_post_decimal($key, $default = 0) {
 
     return (float) str_replace(',', '.', sanitize_text_field(wp_unslash($_POST[$key])));
 }
-/*
-function vm_post_decimal($key, $default = 0) {
-    $value = isset($_POST[$key]) ? wp_unslash($_POST[$key]) : $default;
-    $value = str_replace('.', '', (string) $value);
-    $value = str_replace(',', '.', $value);
-    return (float) $value;
-}
-*/
 
 function vm_log($data) {
     if (!defined('WP_DEBUG') || !WP_DEBUG) {
@@ -82,4 +74,43 @@ function vm_log($data) {
     }
 
     error_log('[Vermieter] ' . print_r($data, true));
+}
+
+function vm_format_type($type_key) {
+    $map = [
+        'wohnung'    => 'Wohnung',
+        'garage'     => 'Garage',
+        'stellplatz' => 'Stellplatz',
+        'keller'     => 'Keller',
+        'alle'       => 'Alle Typen',
+    ];
+
+    return $map[$type_key] ?? ucfirst($type_key);
+}
+
+function vm_format_money($value) {
+    return number_format((float) $value, 2, ',', '.') . ' €';
+}
+
+function vm_format_number($value) {
+    return number_format((float) $value, 2, ',', '.');
+}
+
+function vm_format_date($date) {
+    if (!$date) return '—';
+    return date('d.m.Y', strtotime($date));
+}
+
+function vm_yes_no($value) {
+    return (int)$value === 1 ? 'Ja' : 'Nein';
+}
+function vm_label($key) {
+    $labels = [
+        'property' => 'Objekt',
+        'apartment' => 'Wohnung',
+        'tenant' => 'Mieter',
+        'distribution_key' => 'Verteilerschlüssel',
+    ];
+
+    return $labels[$key] ?? $key;
 }

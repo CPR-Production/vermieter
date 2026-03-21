@@ -82,7 +82,7 @@ $vm_get_page_url = function ($slug, $query = []) {
                     <?php foreach ($apartments as $apartment) : ?>
                         <tr>
                             <td><?php echo esc_html($apartment->name); ?></td>
-                            <td><?php echo esc_html($apartment->type_key); ?></td>
+                            <td><?php echo esc_html(vm_format_type($apartment->type_key)); ?></td>
                             <td><?php echo esc_html(number_format((float) $apartment->wohnflaeche, 2, ',', '.')); ?></td>
                             <td><?php echo esc_html($apartment->personen); ?></td>
                             <td>
@@ -93,7 +93,12 @@ $vm_get_page_url = function ($slug, $query = []) {
                 </tbody>
             </table>
         <?php else : ?>
-            <p>Keine Einheiten vorhanden.</p>
+            <p style="color:#666;">
+                Keine Einheiten vorhanden.
+                <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnungen')); ?>">
+                    Jetzt anlegen →
+                </a>
+            </p>
         <?php endif; ?>
     </div>
 
@@ -160,7 +165,7 @@ $vm_get_page_url = function ($slug, $query = []) {
                     <?php foreach ($cost_categories as $category) : ?>
                         <tr>
                             <td><?php echo esc_html($category->name); ?></td>
-                            <td><?php echo esc_html($category->applies_to_type_key); ?></td>
+                            <td><?php echo esc_html(vm_format_type($category->applies_to_type_key)); ?></td>
                             <td>
                                 <?php
                                 echo esc_html(
@@ -205,7 +210,7 @@ $vm_get_page_url = function ($slug, $query = []) {
                 <tbody>
                     <?php foreach ($distribution_keys as $key) : ?>
                         <tr>
-                            <td><?php echo esc_html($key->applies_to_type_key); ?></td>
+                            <td><?php echo esc_html(vm_format_type($key->applies_to_type_key)); ?></td>
                             <td><?php echo esc_html($key->label); ?></td>
                             <td><?php echo esc_html($key->unit_code); ?></td>
                             <td><?php echo esc_html(number_format((float) $key->total_value, 2, ',', '.')); ?></td>

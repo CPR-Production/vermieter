@@ -72,7 +72,7 @@
                         <?php
                         echo esc_html(
                             $key->property_name . ' | ' .
-                            $key->applies_to_type_key . ' | ' .
+                            vm_format_type($key->applies_to_type_key) . ' | ' .
                             $key->label . ' (' . $key->unit_code . ' / ' .
                             number_format((float) $key->total_value, 2, ',', '.') . ')'
                         );
@@ -114,7 +114,7 @@
                     <tr>
                         <td><?php echo esc_html($category->property_name ?? '—'); ?></td>
                         <td><?php echo esc_html($category->name); ?></td>
-                        <td><?php echo esc_html($category->applies_to_type_key); ?></td>
+                        <td><?php echo esc_html(vm_format_type($category->applies_to_type_key)); ?></td>
                         <td><?php echo esc_html($category->allocation_type); ?></td>
                         <td>
                             <?php

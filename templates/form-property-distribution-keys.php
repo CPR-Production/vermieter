@@ -97,14 +97,12 @@ $edit_item = isset($edit_item) ? $edit_item : null;
                             echo esc_html(
                                 trim(
                                     ($key->property_street ?? '') . ' ' .
-                                    ($key->property_house_number ?? '') /* . ', ' .
-                                    ($key->property_zip_code ?? '') . ' ' .
-                                    ($key->property_city ?? '') */
+                                    ($key->property_house_number ?? '')
                                 )
                             );
                             ?>
                         </td>
-                        <td><?php echo esc_html($key->applies_to_type_key); ?></td>
+                        <td><?php echo esc_html(vm_format_type($key->applies_to_type_key)); ?></td>
                         <td><?php echo esc_html($key->label); ?></td>
                         <td><?php echo esc_html($key->unit_code); ?></td>
                         <td><?php echo esc_html(number_format((float) $key->total_value, 2, ',', '.')); ?></td>
@@ -118,58 +116,127 @@ $edit_item = isset($edit_item) ? $edit_item : null;
     <?php endif; ?>
 
     <?php if (!empty($assigned_keys)) : ?>
+        <?php
+        $grouped_keys = [];
+
+        foreach ($assigned_keys as $key) {
+            $property_id = (int) ($key->property_id ?? 0);
+            $property_name = $key->property_name ?: '—';
+            $property_address = trim(
+                ($key->property_street ?? '') . ' ' .
+                ($key->property_house_number ?? '')
+            );
+            $type_key = $key->applies_to_type_key ?: 'alle';
+
+            if (!isset($grouped_keys[$property_id])) {
+                $grouped_keys[$property_id] = [
+                    'property_name'    => $property_name,
+                    'property_address' => $property_address,
+                    'types'            => [],
+                ];
+            }
+
+            if (!isset($grouped_keys[$property_id]['types'][$type_key])) {
+                $grouped_keys[$property_id]['types'][$type_key] = [];
+            }
+
+            $grouped_keys[$property_id]['types'][$type_key][] = $key;
+        }
+
+/*         $type_labels = [
+            'wohnung'   => 'Wohnung',
+            'garage'    => 'Garage',
+            'stellplatz'=> 'Stellplatz',
+            'keller'    => 'Keller',
+            'alle'      => 'Alle Typen',
+        ]; */
+        ?>
+        <br>
         <h3>Verteilwerte je Apartment</h3>
 
         <form method="post">
             <?php wp_nonce_field('vm_save_inline_distribution_values'); ?>
             <input type="hidden" name="vm_action" value="save_inline_distribution_values">
 
-            <?php foreach ($assigned_keys as $key) : ?>
-                <?php
-                $property_distribution_key_id = (int) $key->id;
-                $apartments = $apartments_by_property_distribution_key[$property_distribution_key_id] ?? [];
-                $values = $distribution_values_map[$property_distribution_key_id] ?? [];
-                ?>
+            <?php foreach ($grouped_keys as $property_id => $property_group) : ?>
+                <div style="border:1px solid #ccd0d4; padding:16px; margin-bottom:24px; background:#fff;">
+                    <h4 style="margin:0 0 6px 0;">
+                        Objekt: <?php echo esc_html($property_group['property_name']); ?>
+                    </h4>
 
-                <h4>
-                    <?php
-                    echo esc_html(
-                        ($key->property_name ?: '—') . ' | ' .
-                        $key->applies_to_type_key . ' | ' .
-                        $key->label . ' (' . $key->unit_code . ' / ' .
-                        number_format((float) $key->total_value, 2, ',', '.') . ')'
-                    );
-                    ?>
-                </h4>
+                    <?php if (!empty($property_group['property_address'])) : ?>
+                        <p style="margin:0 0 14px 0; color:#666;">
+                            <?php echo esc_html($property_group['property_address']); ?>
+                        </p>
+                    <?php endif; ?>
 
-                <?php if (!empty($apartments)) : ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Apartment</th>
-                                <th>Typ</th>
-                                <th>Wert</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($apartments as $apartment) : ?>
-                                <tr>
-                                    <td><?php echo esc_html($apartment->name); ?></td>
-                                    <td><?php echo esc_html($apartment->type_key); ?></td>
-                                    <td>
-                                        <input
-                                            type="text"
-                                            name="vm_distribution_values[<?php echo esc_attr($property_distribution_key_id); ?>][<?php echo esc_attr($apartment->id); ?>]"
-                                            value="<?php echo esc_attr(isset($values[$apartment->id]) ? str_replace('.', ',', (string) $values[$apartment->id]) : '0,00'); ?>"
-                                        >
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else : ?>
-                    <p>Keine passenden Apartments für diesen Typ vorhanden.</p>
-                <?php endif; ?>
+                    <div style="margin-left:20px;">
+                        <p style="margin:0 0 12px 0; font-weight:600;">
+                            Apartments / Einheiten
+                        </p>
+
+                        <?php foreach ($property_group['types'] as $type_key => $keys_for_type) : ?>
+                            <div style="margin:0 0 20px 20px; padding-left:14px; border-left:3px solid #dcdcde;">
+                                <p style="margin:0 0 12px 0; font-weight:600;">
+                                    Typ:
+                                    <?php echo esc_html(vm_format_type($type_key)); ?>
+                                </p>
+
+                                <?php foreach ($keys_for_type as $key) : ?>
+                                    <?php
+                                    $property_distribution_key_id = (int) $key->id;
+                                    $apartments = $apartments_by_property_distribution_key[$property_distribution_key_id] ?? [];
+                                    $values = $distribution_values_map[$property_distribution_key_id] ?? [];
+                                    ?>
+
+                                    <div style="margin:0 0 24px 20px; padding-left:14px; border-left:3px solid #e5e5e5;">
+                                        <p style="margin:0 0 6px 0; font-weight:600;">
+                                            Schlüssel: <?php echo esc_html($key->label); ?>
+                                        </p>
+
+                                        <p style="margin:0 0 12px 0; color:#666;">
+                                            Einheit: <?php echo esc_html($key->unit_code); ?>
+                                            |
+                                            Von insgesamt: <?php echo esc_html(number_format((float) $key->total_value, 2, ',', '.')); ?>
+                                        </p>
+
+                                        <div style="margin-left:20px;">
+                                            <?php if (!empty($apartments)) : ?>
+                                                <table style="margin-top:0;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Apartment</th>
+                                                            <th>Typ</th>
+                                                            <th>Wert</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ($apartments as $apartment) : ?>
+                                                            <tr>
+                                                                <td><?php echo esc_html($apartment->name); ?></td>
+                                                                <td><?php echo esc_html(vm_format_type($apartment->type_key)); ?></td>
+                                                                <td>
+                                                                    <input
+                                                                        type="text"
+                                                                        name="vm_distribution_values[<?php echo esc_attr($property_distribution_key_id); ?>][<?php echo esc_attr($apartment->id); ?>]"
+                                                                        value="<?php echo esc_attr(isset($values[$apartment->id]) ? str_replace('.', ',', (string) $values[$apartment->id]) : '0,00'); ?>"
+                                                                        style="min-width:120px;"
+                                                                    >
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                            <?php else : ?>
+                                                <p style="margin:0;">Keine passenden Apartments für diesen Typ vorhanden.</p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             <?php endforeach; ?>
 
             <p>

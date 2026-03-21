@@ -118,7 +118,7 @@ if ($edit_item) {
                     <tr>
                         <td><?php echo esc_html($apartment->property_name ?? '—'); ?></td>
                         <td><?php echo esc_html($apartment->name); ?></td>
-                        <td><?php echo esc_html($apartment->type_key); ?></td>
+                        <td><?php echo esc_html(vm_format_type($apartment->type_key)); ?></td>
                         <td><?php echo esc_html(number_format((float) $apartment->wohnflaeche, 2, ',', '.')); ?></td>
                         <td><?php echo esc_html($apartment->personen); ?></td>
                         <td>
