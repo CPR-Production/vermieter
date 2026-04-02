@@ -227,21 +227,27 @@ class Vermieter_Shortcodes {
         $distribution_keys = $selected_property_id ? Vermieter_Property_Distribution_Keys::get_by_property($selected_property_id) : [];
 
         $apartment_tenants = [];
+        $apartment_usage_summaries = [];
+        $dashboard_year = (int) current_time('Y');
+
         if (!empty($apartments)) {
             foreach ($apartments as $apartment) {
                 $apartment_tenants[$apartment->id] = Vermieter_Apartment_Tenants::get_by_apartment($apartment->id);
+                $apartment_usage_summaries[$apartment->id] = Vermieter_Apartment_Tenants::get_usage_summary_by_apartment_and_year($apartment->id, $dashboard_year);
             }
         }
 
         return vm_render_template('property-dashboard.php', [
-            'properties'            => $properties,
-            'selected_property_id'  => $selected_property_id,
-            'property'              => $property,
-            'apartments'            => $apartments,
-            'cost_categories'       => $cost_categories,
-            'distribution_keys'     => $distribution_keys,
-            'apartment_tenants'     => $apartment_tenants,
-            'apportionment_types'   => Vermieter_Apportionment_Types::get_options(),
+            'properties'                => $properties,
+            'selected_property_id'      => $selected_property_id,
+            'property'                  => $property,
+            'apartments'                => $apartments,
+            'cost_categories'           => $cost_categories,
+            'distribution_keys'         => $distribution_keys,
+            'apartment_tenants'         => $apartment_tenants,
+            'apartment_usage_summaries' => $apartment_usage_summaries,
+            'dashboard_year'            => $dashboard_year,
+            'apportionment_types'       => Vermieter_Apportionment_Types::get_options(),
         ]);
     }
 
@@ -623,11 +629,13 @@ class Vermieter_Shortcodes {
             $record_id = (int) ($_POST['vm_record_id'] ?? 0);
 
             $data = [
-                'property_id' => (int) ($_POST['vm_property_id'] ?? 0),
-                'name'        => sanitize_text_field(wp_unslash($_POST['vm_apartment_name'] ?? '')),
-                'type_key'    => sanitize_text_field(wp_unslash($_POST['vm_type_key'] ?? 'wohnung')),
-                'wohnflaeche' => vm_post_decimal('vm_wohnflaeche'),
-                'personen'    => (int) ($_POST['vm_personen'] ?? 0),
+                'property_id'      => (int) ($_POST['vm_property_id'] ?? 0),
+                'name'             => sanitize_text_field(wp_unslash($_POST['vm_apartment_name'] ?? '')),
+                'type_key'         => sanitize_text_field(wp_unslash($_POST['vm_type_key'] ?? 'wohnung')),
+                'wohnflaeche'      => vm_post_decimal('vm_wohnflaeche'),
+                'personen'         => (int) ($_POST['vm_personen'] ?? 0),
+                'acquisition_date' => sanitize_text_field(wp_unslash($_POST['vm_acquisition_date'] ?? '')),
+                'disposal_date'    => sanitize_text_field(wp_unslash($_POST['vm_disposal_date'] ?? '')),
             ];
 
             if ($record_id > 0) {

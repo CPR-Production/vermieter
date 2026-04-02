@@ -14,17 +14,35 @@ class Vermieter_Apartments
         global $wpdb;
         $table = $wpdb->prefix . 'vm_apartments';
 
+        $property_id = (int) ($data['property_id'] ?? 0);
+        $name = sanitize_text_field($data['name'] ?? '');
+        $type_key = sanitize_text_field($data['type_key'] ?? 'wohnung');
+        $wohnflaeche = (float) ($data['wohnflaeche'] ?? 0);
+        $personen = (int) ($data['personen'] ?? 0);
+        $acquisition_date = !empty($data['acquisition_date']) ? sanitize_text_field($data['acquisition_date']) : null;
+        $disposal_date = !empty($data['disposal_date']) ? sanitize_text_field($data['disposal_date']) : null;
+
+        if ($property_id <= 0 || $name === '') {
+            return false;
+        }
+
+        if (!empty($acquisition_date) && !empty($disposal_date) && $disposal_date < $acquisition_date) {
+            return false;
+        }
+
         $inserted = $wpdb->insert(
             $table,
             [
-                'user_id'     => get_current_user_id(),
-                'property_id' => (int) ($data['property_id'] ?? 0),
-                'name'        => sanitize_text_field($data['name'] ?? ''),
-                'type_key'    => sanitize_text_field($data['type_key'] ?? 'wohnung'),
-                'wohnflaeche' => (float) ($data['wohnflaeche'] ?? 0),
-                'personen'    => (int) ($data['personen'] ?? 0),
+                'user_id'          => get_current_user_id(),
+                'property_id'      => $property_id,
+                'name'             => $name,
+                'type_key'         => $type_key,
+                'wohnflaeche'      => $wohnflaeche,
+                'personen'         => $personen,
+                'acquisition_date' => $acquisition_date,
+                'disposal_date'    => $disposal_date,
             ],
-            ['%d', '%d', '%s', '%s', '%f', '%d']
+            ['%d', '%d', '%s', '%s', '%f', '%d', '%s', '%s']
         );
 
         return $inserted ? (int) $wpdb->insert_id : false;
@@ -177,11 +195,20 @@ class Vermieter_Apartments
         $type_key = sanitize_text_field($data['type_key'] ?? 'wohnung');
         $wohnflaeche = (float) ($data['wohnflaeche'] ?? 0);
         $personen = (int) ($data['personen'] ?? 0);
+        $acquisition_date = !empty($data['acquisition_date']) ? sanitize_text_field($data['acquisition_date']) : null;
+        $disposal_date = !empty($data['disposal_date']) ? sanitize_text_field($data['disposal_date']) : null;
 
         if ($id <= 0 || $property_id <= 0 || $name === '') {
             return [
                 'success' => false,
                 'message' => 'Objekt und Name sind erforderlich.',
+            ];
+        }
+
+        if (!empty($acquisition_date) && !empty($disposal_date) && $disposal_date < $acquisition_date) {
+            return [
+                'success' => false,
+                'message' => 'Verkauf / Bestandsende darf nicht vor dem Kaufdatum liegen.',
             ];
         }
 
@@ -198,17 +225,19 @@ class Vermieter_Apartments
         $updated = $wpdb->update(
             $table,
             [
-                'property_id' => $property_id,
-                'name'        => $name,
-                'type_key'    => $type_key,
-                'wohnflaeche' => $wohnflaeche,
-                'personen'    => $personen,
+                'property_id'      => $property_id,
+                'name'             => $name,
+                'type_key'         => $type_key,
+                'wohnflaeche'      => $wohnflaeche,
+                'personen'         => $personen,
+                'acquisition_date' => $acquisition_date,
+                'disposal_date'    => $disposal_date,
             ],
             [
                 'id'      => $id,
                 'user_id' => $user_id,
             ],
-            ['%d', '%s', '%s', '%f', '%d'],
+            ['%d', '%s', '%s', '%f', '%d', '%s', '%s'],
             ['%d', '%d']
         );
 

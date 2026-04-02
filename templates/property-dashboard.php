@@ -16,6 +16,15 @@ $vm_get_page_url = function ($slug, $query = []) {
 
     return $url;
 };
+
+$vm_format_date = function ($date) {
+    if (empty($date) || $date === '0000-00-00') {
+        return '—';
+    }
+
+    $timestamp = strtotime($date);
+    return $timestamp ? date_i18n('d.m.Y', $timestamp) : $date;
+};
 ?>
 
 <div class="vm-wrap">
@@ -75,6 +84,8 @@ $vm_get_page_url = function ($slug, $query = []) {
                         <th>Typ</th>
                         <th>Wohnfläche</th>
                         <th>Personen</th>
+                        <th>Im Bestand seit</th>
+                        <th>Aus Bestand bis</th>
                         <th>Aktion</th>
                     </tr>
                 </thead>
@@ -85,6 +96,8 @@ $vm_get_page_url = function ($slug, $query = []) {
                             <td><?php echo esc_html(vm_format_type($apartment->type_key)); ?></td>
                             <td><?php echo esc_html(number_format((float) $apartment->wohnflaeche, 2, ',', '.')); ?></td>
                             <td><?php echo esc_html($apartment->personen); ?></td>
+                            <td><?php echo esc_html($vm_format_date($apartment->acquisition_date ?? '')); ?></td>
+                            <td><?php echo esc_html($vm_format_date($apartment->disposal_date ?? '')); ?></td>
                             <td>
                                 <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnungen', ['edit_id' => (int) $apartment->id])); ?>">Bearbeiten</a>
                             </td>
@@ -99,6 +112,43 @@ $vm_get_page_url = function ($slug, $query = []) {
                     Jetzt anlegen →
                 </a>
             </p>
+        <?php endif; ?>
+    </div>
+
+    <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
+        <h3>Nutzung / Leerstand <?php echo esc_html((string) $dashboard_year); ?></h3>
+
+        <?php if (!empty($apartments)) : ?>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Einheit</th>
+                        <th>Im Bestand seit</th>
+                        <th>Im Bestand bis</th>
+                        <th>Tage im Bestand</th>
+                        <th>Vermietet</th>
+                        <th>Leerstand</th>
+                        <th>Status aktuell</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($apartments as $apartment) : ?>
+                        <?php $usage = $apartment_usage_summaries[$apartment->id] ?? []; ?>
+                        <tr>
+                            <td><?php echo esc_html($apartment->name); ?></td>
+                            <td><?php echo esc_html($vm_format_date($usage['inventory_start'] ?? ($apartment->acquisition_date ?? ''))); ?></td>
+                            <td><?php echo esc_html($vm_format_date($usage['inventory_end'] ?? ($apartment->disposal_date ?? ''))); ?></td>
+                            <td><?php echo esc_html((string) ((int) ($usage['inventory_days'] ?? 0))); ?></td>
+                            <td><?php echo esc_html((string) ((int) ($usage['tenant_days'] ?? 0))); ?></td>
+                            <td><?php echo esc_html((string) ((int) ($usage['vacancy_days'] ?? 0))); ?></td>
+                            <td><?php echo esc_html($usage['status'] ?? '—'); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p style="color:#666; margin-top:8px;">Die Berechnung berücksichtigt den Bestand ab Kaufdatum bzw. bis Verkaufsdatum der Einheit.</p>
+        <?php else : ?>
+            <p>Keine Einheiten vorhanden.</p>
         <?php endif; ?>
     </div>
 
@@ -131,8 +181,8 @@ $vm_get_page_url = function ($slug, $query = []) {
                             <tr>
                                 <td><?php echo esc_html($apartment->name); ?></td>
                                 <td><?php echo esc_html(trim($tenant_row->salutation . ' ' . $tenant_row->first_name . ' ' . $tenant_row->last_name)); ?></td>
-                                <td><?php echo esc_html($tenant_row->move_in_date); ?></td>
-                                <td><?php echo esc_html($tenant_row->move_out_date ?: '—'); ?></td>
+                                <td><?php echo esc_html($vm_format_date($tenant_row->move_in_date)); ?></td>
+                                <td><?php echo esc_html($vm_format_date($tenant_row->move_out_date ?: '—')); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endforeach; ?>

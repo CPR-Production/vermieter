@@ -226,11 +226,15 @@ class Vermieter_DB {
             type_key VARCHAR(50) NOT NULL DEFAULT 'wohnung',
             wohnflaeche DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             personen INT NOT NULL DEFAULT 0,
+            acquisition_date DATE NULL,
+            disposal_date DATE NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY user_id (user_id),
             KEY property_id (property_id),
-            KEY type_key (type_key)
+            KEY type_key (type_key),
+            KEY acquisition_date (acquisition_date),
+            KEY disposal_date (disposal_date)
         ) $charset_collate;";
 
         dbDelta($sql_types);

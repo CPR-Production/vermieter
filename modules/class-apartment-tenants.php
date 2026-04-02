@@ -170,75 +170,132 @@ class Vermieter_Apartment_Tenants {
 
     public static function get_timeline_with_vacancies_by_apartment_and_year($apartment_id, $year) {
         $year = (int) $year;
-        $year_start = $year . '-01-01';
-        $year_end   = $year . '-12-31';
+        $apartment = Vermieter_Apartments::get($apartment_id);
 
-        $occupancies = self::get_by_apartment_and_year($apartment_id, $year);
-        $timeline = [];
-        $cursor = $year_start;
-
-        foreach ($occupancies as $row) {
-            $occ_start = max($row->move_in_date, $year_start);
-            $occ_end   = $row->move_out_date ? min($row->move_out_date, $year_end) : $year_end;
-
-            if ($occ_start > $cursor) {
-                $vacancy_end = date('Y-m-d', strtotime($occ_start . ' -1 day'));
-
-                if ($vacancy_end >= $cursor) {
-                    $timeline[] = [
-                        'type'       => 'vacancy',
-                        'label'      => 'Leerstand',
-                        'start_date' => $cursor,
-                        'end_date'   => $vacancy_end,
-                        'days'       => self::count_days_inclusive($cursor, $vacancy_end),
-                    ];
-                }
-            }
-
-            $timeline[] = [
-                'type'       => 'tenant',
-                'row'        => $row,
-                'label'      => trim(($row->salutation ?? '') . ' ' . ($row->first_name ?? '') . ' ' . ($row->last_name ?? '')),
-                'start_date' => $occ_start,
-                'end_date'   => $occ_end,
-                'days'       => self::count_days_inclusive($occ_start, $occ_end),
-            ];
-
-            $cursor = date('Y-m-d', strtotime($occ_end . ' +1 day'));
-        }
-
-        if ($cursor <= $year_end) {
-            $timeline[] = [
-                'type'       => 'vacancy',
-                'label'      => 'Leerstand',
-                'start_date' => $cursor,
-                'end_date'   => $year_end,
-                'days'       => self::count_days_inclusive($cursor, $year_end),
-            ];
-        }
-
-        return $timeline;
-    }
-
-    public static function get_full_timeline_with_vacancies_by_apartment($apartment_id) {
-        $rows = self::get_by_apartment($apartment_id);
-        $timeline = [];
-
-        if (empty($rows)) {
+        if (!$apartment) {
             return [];
         }
 
-        $cursor = null;
+        $year_start = $year . '-01-01';
+        $year_end   = $year . '-12-31';
+        $range_start = !empty($apartment->acquisition_date) ? max($year_start, $apartment->acquisition_date) : $year_start;
+        $range_end   = !empty($apartment->disposal_date) ? min($year_end, $apartment->disposal_date) : $year_end;
 
-        foreach ($rows as $index => $row) {
-            $start = $row->move_in_date;
-            $end   = $row->move_out_date ?: null;
+        if ($range_end < $range_start) {
+            return [];
+        }
 
-            if ($index === 0) {
-                $cursor = $start;
+        return self::build_usage_timeline_for_range($apartment_id, $range_start, $range_end);
+    }
+
+    public static function get_full_timeline_with_vacancies_by_apartment($apartment_id) {
+        $apartment = Vermieter_Apartments::get($apartment_id);
+
+        if (!$apartment) {
+            return [];
+        }
+
+        $range_start = !empty($apartment->acquisition_date) ? $apartment->acquisition_date : null;
+
+        if (empty($range_start)) {
+            $rows = self::get_by_apartment($apartment_id);
+            if (empty($rows)) {
+                return [];
+            }
+            $range_start = $rows[0]->move_in_date;
+        }
+
+        $range_end = !empty($apartment->disposal_date) ? $apartment->disposal_date : current_time('Y-m-d');
+
+        if ($range_end < $range_start) {
+            return [];
+        }
+
+        return self::build_usage_timeline_for_range($apartment_id, $range_start, $range_end);
+    }
+
+    public static function get_usage_summary_by_apartment_and_year($apartment_id, $year) {
+        $apartment = Vermieter_Apartments::get($apartment_id);
+        $timeline = self::get_timeline_with_vacancies_by_apartment_and_year($apartment_id, $year);
+        $summary = [
+            'year' => (int) $year,
+            'in_inventory' => false,
+            'inventory_start' => null,
+            'inventory_end' => null,
+            'inventory_days' => 0,
+            'tenant_days' => 0,
+            'vacancy_days' => 0,
+            'status' => 'Nicht im Bestand',
+        ];
+
+        if (!$apartment) {
+            return $summary;
+        }
+
+        $year_start = $year . '-01-01';
+        $year_end   = $year . '-12-31';
+        $inventory_start = !empty($apartment->acquisition_date) ? max($year_start, $apartment->acquisition_date) : $year_start;
+        $inventory_end   = !empty($apartment->disposal_date) ? min($year_end, $apartment->disposal_date) : $year_end;
+
+        if ($inventory_end < $inventory_start) {
+            return $summary;
+        }
+
+        $summary['in_inventory'] = true;
+        $summary['inventory_start'] = $inventory_start;
+        $summary['inventory_end'] = $inventory_end;
+        $summary['inventory_days'] = self::count_days_inclusive($inventory_start, $inventory_end);
+
+        foreach ($timeline as $item) {
+            if (($item['type'] ?? '') === 'tenant') {
+                $summary['tenant_days'] += (int) ($item['days'] ?? 0);
             }
 
-            if ($cursor !== null && $start > $cursor) {
+            if (($item['type'] ?? '') === 'vacancy') {
+                $summary['vacancy_days'] += (int) ($item['days'] ?? 0);
+            }
+        }
+
+        if (!empty($apartment->disposal_date) && $apartment->disposal_date < current_time('Y-m-d')) {
+            $summary['status'] = 'Verkauft / aus Bestand';
+        } elseif (!empty($timeline)) {
+            $last_item = end($timeline);
+            $summary['status'] = (($last_item['type'] ?? '') === 'tenant') ? 'Vermietet' : 'Leerstand';
+            reset($timeline);
+        } else {
+            $summary['status'] = 'Leerstand';
+        }
+
+        return $summary;
+    }
+
+    public static function get_vacancy_days_by_apartment_and_year($apartment_id, $year) {
+        $timeline = self::get_timeline_with_vacancies_by_apartment_and_year($apartment_id, $year);
+        $days = 0;
+
+        foreach ($timeline as $item) {
+            if (($item['type'] ?? '') === 'vacancy') {
+                $days += (int) $item['days'];
+            }
+        }
+
+        return $days;
+    }
+
+    private static function build_usage_timeline_for_range($apartment_id, $range_start, $range_end) {
+        $rows = self::get_by_apartment($apartment_id);
+        $timeline = [];
+        $cursor = $range_start;
+
+        foreach ($rows as $row) {
+            $start = max($row->move_in_date, $range_start);
+            $end = !empty($row->move_out_date) ? min($row->move_out_date, $range_end) : $range_end;
+
+            if ($end < $range_start || $start > $range_end || $end < $start) {
+                continue;
+            }
+
+            if ($start > $cursor) {
                 $vacancy_end = date('Y-m-d', strtotime($start . ' -1 day'));
 
                 if ($vacancy_end >= $cursor) {
@@ -257,31 +314,28 @@ class Vermieter_Apartment_Tenants {
                 'row'        => $row,
                 'label'      => trim(($row->salutation ?? '') . ' ' . ($row->first_name ?? '') . ' ' . ($row->last_name ?? '')),
                 'start_date' => $start,
-                'end_date'   => $end ?: 'offen',
-                'days'       => $end ? self::count_days_inclusive($start, $end) : null,
+                'end_date'   => $end,
+                'days'       => self::count_days_inclusive($start, $end),
             ];
 
-            if ($end) {
-                $cursor = date('Y-m-d', strtotime($end . ' +1 day'));
-            } else {
-                $cursor = null;
+            $cursor = date('Y-m-d', strtotime($end . ' +1 day'));
+
+            if ($cursor > $range_end) {
+                break;
             }
+        }
+
+        if ($cursor <= $range_end) {
+            $timeline[] = [
+                'type'       => 'vacancy',
+                'label'      => 'Leerstand',
+                'start_date' => $cursor,
+                'end_date'   => $range_end,
+                'days'       => self::count_days_inclusive($cursor, $range_end),
+            ];
         }
 
         return $timeline;
-    }
-
-    public static function get_vacancy_days_by_apartment_and_year($apartment_id, $year) {
-        $timeline = self::get_timeline_with_vacancies_by_apartment_and_year($apartment_id, $year);
-        $days = 0;
-
-        foreach ($timeline as $item) {
-            if ($item['type'] === 'vacancy') {
-                $days += (int) $item['days'];
-            }
-        }
-
-        return $days;
     }
 
     private static function count_days_inclusive($start_date, $end_date) {

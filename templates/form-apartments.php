@@ -3,10 +3,14 @@
 <?php
 $edit_item = isset($edit_item) ? $edit_item : null;
 $existing_dependencies = [];
+//$is_disabled = $edit_item && !empty($existing_dependencies);
+$types = ['wohnung', 'garage', 'stellplatz', 'keller'];
 
 if ($edit_item) {
     $existing_dependencies = Vermieter_Apartments::get_existing_dependencies((int) $edit_item->id);
 }
+$is_disabled = ($edit_item && !empty($existing_dependencies));
+
 ?>
 
 <div class="vm-wrap">
@@ -16,7 +20,7 @@ if ($edit_item) {
         <p><strong><?php echo esc_html($message); ?></strong></p>
     <?php endif; ?>
 
-    <?php if ($edit_item && !empty($existing_dependencies)) : ?>
+    <?php if ($is_disabled) : ?>
         <p><strong>Hinweis:</strong> Ein Typwechsel ist aktuell gesperrt.</p>
         <ul>
             <?php foreach ($existing_dependencies as $dependency) : ?>
@@ -62,13 +66,41 @@ if ($edit_item) {
         </p>
 
         <p>
+            <label for="vm_acquisition_date">Kaufdatum / im Bestand seit</label><br>
+            <input
+                type="date"
+                name="vm_acquisition_date"
+                id="vm_acquisition_date"
+                value="<?php echo esc_attr($edit_item->acquisition_date ?? ''); ?>"
+            >
+        </p>
+
+        <p>
+            <label for="vm_disposal_date">Verkauft / aus Bestand bis</label><br>
+            <input
+                type="date"
+                name="vm_disposal_date"
+                id="vm_disposal_date"
+                value="<?php echo esc_attr($edit_item->disposal_date ?? ''); ?>"
+            >
+        </p>
+
+        <p>
             <label for="vm_type_key">Typ</label><br>
-            <select name="vm_type_key" id="vm_type_key" required>
-                <option value="wohnung" <?php selected($edit_item->type_key ?? '', 'wohnung'); ?>>Wohnung</option>
-                <option value="garage" <?php selected($edit_item->type_key ?? '', 'garage'); ?>>Garage</option>
-                <option value="stellplatz" <?php selected($edit_item->type_key ?? '', 'stellplatz'); ?>>Stellplatz</option>
-                <option value="keller" <?php selected($edit_item->type_key ?? '', 'keller'); ?>>Keller</option>
+            <select name="vm_type_key" 
+                id="vm_type_key" required 
+                <?php echo $is_disabled ? 'disabled' : ''; ?>
+                >
+            <?php foreach ($types as $key) : ?>
+                <option value="<?php echo esc_attr($key); ?>" 
+                    <?php selected($edit_item->type_key ?? '', $key); ?>>
+                    <?php echo esc_html(vm_format_type($key)); ?>
+                </option>
+            <?php endforeach; ?>
             </select>
+        <?php if ($is_disabled) : ?>
+            <input type="hidden" name="vm_type_key" value="<?php echo esc_attr($edit_item->type_key); ?>">
+        <?php endif; ?>
         </p>
 
         <p>
@@ -110,6 +142,8 @@ if ($edit_item) {
                     <th>Typ</th>
                     <th>Wohnfläche</th>
                     <th>Personen</th>
+                    <th>Im Bestand seit</th>
+                    <th>Im Bestand bis</th>
                     <th>Aktion</th>
                 </tr>
             </thead>
@@ -121,6 +155,8 @@ if ($edit_item) {
                         <td><?php echo esc_html(vm_format_type($apartment->type_key)); ?></td>
                         <td><?php echo esc_html(number_format((float) $apartment->wohnflaeche, 2, ',', '.')); ?></td>
                         <td><?php echo esc_html($apartment->personen); ?></td>
+                        <td><?php echo !empty($apartment->acquisition_date) ? esc_html(date('d.m.Y', strtotime($apartment->acquisition_date))) : '—'; ?></td>
+                        <td><?php echo !empty($apartment->disposal_date) ? esc_html(date('d.m.Y', strtotime($apartment->disposal_date))) : '—'; ?></td>
                         <td>
                             <a href="<?php echo esc_url(add_query_arg('edit_id', (int) $apartment->id)); ?>">Bearbeiten</a>
                         </td>
