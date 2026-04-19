@@ -4,7 +4,13 @@
 $edit_item = isset($edit_item) ? $edit_item : null;
 $existing_dependencies = [];
 //$is_disabled = $edit_item && !empty($existing_dependencies);
-$types = ['wohnung', 'garage', 'stellplatz', 'keller'];
+//$types = ['wohnung', 'garage', 'stellplatz', 'keller'];
+$types = [
+    'wohnung'    => ['label' => 'Wohnung', 'icon' => 'fa-building'],
+    'garage'     => ['label' => 'Garage', 'icon' => 'fa-car'],
+    'stellplatz' => ['label' => 'Stellplatz', 'icon' => 'fa-square-parking'],
+    'keller'     => ['label' => 'Keller', 'icon' => 'fa-box'],
+];
 
 if ($edit_item) {
     $existing_dependencies = Vermieter_Apartments::get_existing_dependencies((int) $edit_item->id);
@@ -86,17 +92,16 @@ $is_disabled = ($edit_item && !empty($existing_dependencies));
         </p>
 
         <p>
-            <label for="vm_type_key">Typ</label><br>
-            <select name="vm_type_key" 
-                id="vm_type_key" required 
-                <?php echo $is_disabled ? 'disabled' : ''; ?>
-                >
-            <?php foreach ($types as $key) : ?>
-                <option value="<?php echo esc_attr($key); ?>" 
-                    <?php selected($edit_item->type_key ?? '', $key); ?>>
-                    <?php echo esc_html(vm_format_type($key)); ?>
-                </option>
-            <?php endforeach; ?>
+            <label for="vm_type_key">
+                <i class="fa-solid fa-building"></i> Typ
+            </label><br>
+            <select name="vm_type_key" id="vm_type_key" required>
+                <?php foreach ($types as $key => $type): ?>
+                    <option value="<?php echo esc_attr($key); ?>"
+                        <?php selected($edit_item->type_key ?? '', $key); ?>>
+                        <?php echo esc_html($type['label']); ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
         <?php if ($is_disabled) : ?>
             <input type="hidden" name="vm_type_key" value="<?php echo esc_attr($edit_item->type_key); ?>">
@@ -125,7 +130,9 @@ $is_disabled = ($edit_item && !empty($existing_dependencies));
         </p>
 
         <p>
-            <button type="submit"><?php echo $edit_item ? 'Wohnung aktualisieren' : 'Wohnung speichern'; ?></button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> <?php echo $edit_item ? 'Wohnung aktualisieren' : 'Wohnung speichern'; ?>
+            </button>
             <?php if ($edit_item) : ?>
                 <a href="<?php echo esc_url(remove_query_arg('edit_id')); ?>" style="margin-left:10px;">Abbrechen</a>
             <?php endif; ?>

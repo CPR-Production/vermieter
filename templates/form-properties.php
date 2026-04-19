@@ -14,7 +14,12 @@
         <p><label>Hausnummer</label><br><input type="text" name="vm_property_house_number"></p>
         <p><label>PLZ</label><br><input type="text" name="vm_property_zip_code"></p>
         <p><label>Ort</label><br><input type="text" name="vm_property_city"></p>
-        <p><button type="submit">Objekt speichern</button></p>
+        <p>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Objekt speichern
+            </button>
+        </p>
+
     </form>
 
     <?php if (!empty($properties)) : ?>

@@ -37,7 +37,9 @@
     </p>
 
     <p>
-        <button type="submit">Kategoriedefinition speichern</button>
+        <button type="submit" class="vm-btn-primary">
+            <i class="fa-solid fa-save"></i> Kategoriedefinition speichern
+        </button>
     </p>
 </form>
 

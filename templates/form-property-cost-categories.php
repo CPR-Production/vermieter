@@ -91,7 +91,9 @@
         </p>
 
         <p>
-            <button type="submit">Zuordnung speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Zuordnung speichern
+            </button>
         </p>
     </form>
 

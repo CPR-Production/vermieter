@@ -63,7 +63,9 @@
         </p>
 
         <p>
-            <button type="submit">Kostenkategorie speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Kostenkategorie speichern
+            </button>
         </p>
     </form>
 

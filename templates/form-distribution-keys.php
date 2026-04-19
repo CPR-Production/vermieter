@@ -39,7 +39,9 @@
         </p>
 
         <p>
-            <button type="submit">Verteilerschlüssel speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Verteilerschlüssel speichern
+            </button>
         </p>
     </form>
 

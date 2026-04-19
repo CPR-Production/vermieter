@@ -51,7 +51,9 @@
             <input type="text" name="vm_bank_name" id="vm_bank_name">
         </p>
         <p>
-            <button type="submit">Mieter speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Mieter speichern
+            </button>
         </p>
     </form>
 

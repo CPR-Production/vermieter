@@ -140,7 +140,9 @@
                 </tbody>
             </table>
             <p>
-                <button type="submit">Offene Zahlungen speichern</button>
+                <button type="submit" class="vm-btn-primary">
+                    <i class="fa-solid fa-save"></i> Offene Zahlungen speichern
+                </button>
             </p>
         </form>
     <?php else : ?>
@@ -153,11 +155,11 @@
         <table>
             <thead>
                 <tr>
-                    <th>Wohnung</th>
-                    <th>Mieter</th>
-                    <th>Mietmonat</th>
-                    <th>Zahlungseingang</th>
-                    <th>Betrag (€)</th>
+                    <th><i class="fa-solid fa-building"></i> Wohnung</th>
+                    <th><i class="fa-solid fa-user"></i> Mieter</th>
+                    <th><i class="fa-solid fa-calendar"></i> Mietmonat</th>
+                    <th><i class="fa-solid fa-calendar"></i> Zahlungseingang</th>
+                    <th><i class="fa-solid fa-euro-sign"></i> Betrag</th>
                     <th>Status</th>
                     <th>Notiz</th>
                 </tr>
@@ -174,7 +176,18 @@
                             <?php echo esc_html(date('d.m.Y', strtotime($payment->payment_date ?: '—'))); ?>
                         </td>
                         <td><?php echo esc_html(number_format((float) $payment->amount_paid, 2, ',', '.')); ?></td>
-                        <td><?php echo (int) $payment->is_paid === 1 ? 'Bezahlt' : 'Offen / Teilzahlung'; ?></td>
+                        <td>
+                            <?php 
+                            if ( (int)$payment->is_paid === 1) {
+                                echo '<span class="vm-status-paid">
+                                        <i class="fa-solid fa-check"></i> Bezahlt
+                                    </span>';
+                            } else {
+                                echo '<span class="vm-status-open">
+                                        <i class="fa-solid fa-clock"></i> Offen / Teilzahlung
+                                    </span>';
+                            }?>
+                        </td>
                         <td><?php echo esc_html($payment->note); ?></td>
                     </tr>
                 <?php endforeach; ?>

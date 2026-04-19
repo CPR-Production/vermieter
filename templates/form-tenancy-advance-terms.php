@@ -39,7 +39,9 @@
         </p>
 
         <p>
-            <button type="submit">Vorauszahlung speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Vorauszahlung speichern
+            </button>
         </p>
     </form>
 
@@ -48,11 +50,11 @@
         <table>
             <thead>
                 <tr>
-                    <th>Wohnung</th>
-                    <th>Mieter</th>
-                    <th>Gültig ab</th>
-                    <th>NK</th>
-                    <th>HK</th>
+                    <th><i class="fa-solid fa-building"></i> Wohnung</th>
+                    <th><i class="fa-solid fa-user"></i> Mieter</th>
+                    <th><i class="fa-solid fa-calendar"></i> Gültig ab</th>
+                    <th><i class="fa-solid fa-euro-sign"></i> NK</th>
+                    <th><i class="fa-solid fa-euro-sign"></i> HK</th>
                 </tr>
             </thead>
             <tbody>

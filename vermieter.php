@@ -2,7 +2,7 @@
 /*
 Plugin Name: Vermieter / Nebenkostenabrechnung
 Description: Nebenkostenverwaltung für Vermieter
-Version: 0.10.8
+Version: 0.10.9
 Author: Christian Husemann
 */
 
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('VERMIETER_VERSION', '0.10.8');
+define('VERMIETER_VERSION', '0.10.9');
 define('VERMIETER_DB_VERSION', '0.10.0');
 define('VERMIETER_PLUGIN_FILE', __FILE__);
 define('VERMIETER_PATH', plugin_dir_path(__FILE__));
@@ -53,5 +53,14 @@ add_action('wp_enqueue_scripts', function () {
         VERMIETER_URL . 'assets/css/vermieter.css',
         [],
         VERMIETER_VERSION
+    );
+});
+
+add_action('wp_enqueue_scripts', function() {
+    wp_enqueue_style(
+        'vm-fontawesome',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
+        [],
+        '6.5.0'
     );
 });

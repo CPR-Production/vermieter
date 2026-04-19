@@ -52,9 +52,9 @@
             <table id="vm-costs-table">
                 <thead>
                     <tr>
-                        <th>Kategorie</th>
+                        <th><i class="fa-solid fa-layer-group"></i> Kategorie</th>
                         <th>Bezeichnung</th>
-                        <th>Betrag</th>
+                        <th><i class="fa-solid fa-euro-sign"></i> Betrag</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,7 +69,8 @@
                                     <input
                                         type="text"
                                         name="vm_rows[<?php echo esc_attr($index); ?>][name]"
-                                        value="<?php echo esc_attr($category->name); ?>"
+                                        value="<?php echo esc_attr('Jahresabrechnung ' . $period['year']); ?>"
+                                        data-auto-name="<?php echo esc_attr('Jahresabrechnung ' . $period['year']); ?>"
                                         style="width:100%;"
                                     >
                                 </td>
@@ -95,67 +96,102 @@
             </p>
 
             <p>
-                <button type="submit">Tabelle speichern</button>
+                <button type="submit" class="vm-btn-primary">
+                    <i class="fa-solid fa-save"></i> Tabelle Speichern
+                </button>
             </p>
         </form>
 
         <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const tableBody = document.querySelector('#vm-costs-table tbody');
-            const addRowButton = document.getElementById('vm-add-row');
-            const yearField = document.getElementById('vm_period_year');
-            const periodStartField = document.getElementById('vm_period_start');
-            const periodEndField = document.getElementById('vm_period_end');
+            document.addEventListener('DOMContentLoaded', function () {
+                const tableBody = document.querySelector('#vm-costs-table tbody');
+                const addRowButton = document.getElementById('vm-add-row');
+                const yearField = document.getElementById('vm_period_year');
+                const periodStartField = document.getElementById('vm_period_start');
+                const periodEndField = document.getElementById('vm_period_end');
 
-            if (yearField && periodStartField && periodEndField) {
-                const updatePeriodDatesFromYear = function () {
+                const getInvoiceName = function () {
                     const year = parseInt(yearField.value, 10);
 
                     if (!year || year < 1000 || year > 9999) {
-                        return;
+                        return 'Jahresabrechnung';
                     }
 
-                    periodStartField.value = year + '-01-01';
-                    periodEndField.value = year + '-12-31';
+                    return 'Jahresabrechnung ' + year;
                 };
 
-                yearField.addEventListener('change', updatePeriodDatesFromYear);
-                yearField.addEventListener('input', updatePeriodDatesFromYear);
-            }
+                const updateAutoNames = function () {
+                    const newAutoName = getInvoiceName();
+                    const nameFields = document.querySelectorAll('#vm-costs-table input[name$="[name]"]');
 
-            if (!tableBody || !addRowButton) {
-                return;
-            }
+                    nameFields.forEach(function (field) {
+                        const previousAutoName = field.dataset.autoName || '';
 
-            let rowIndex = <?php echo !empty($property_categories) ? count($property_categories) : 0; ?>;
+                        if (field.value === '' || field.value === previousAutoName) {
+                            field.value = newAutoName;
+                            field.dataset.autoName = newAutoName;
+                        }
+                    });
+                };
 
-            const categoryOptions = `<?php
-                $options = '<option value="">Bitte wählen</option>';
-                foreach ($property_categories as $category) {
-                    $options .= '<option value="' . esc_attr($category->id) . '">' . esc_html($category->name) . '</option>';
+                if (yearField && periodStartField && periodEndField) {
+                    const updatePeriodDatesFromYear = function () {
+                        const year = parseInt(yearField.value, 10);
+
+                        if (!year || year < 1000 || year > 9999) {
+                            return;
+                        }
+
+                        periodStartField.value = year + '-01-01';
+                        periodEndField.value = year + '-12-31';
+
+                        updateAutoNames();
+                    };
+
+                    yearField.addEventListener('change', updatePeriodDatesFromYear);
+                    yearField.addEventListener('input', updatePeriodDatesFromYear);
                 }
-                echo $options;
-            ?>`;
 
-            addRowButton.addEventListener('click', function () {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <select name="vm_rows[${rowIndex}][property_cost_category_id]">
-                            ${categoryOptions}
-                        </select>
-                    </td>
-                    <td>
-                        <input type="text" name="vm_rows[${rowIndex}][name]" style="width:100%;">
-                    </td>
-                    <td>
-                        <input type="text" name="vm_rows[${rowIndex}][betrag]" placeholder="0,00">
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-                rowIndex++;
+                if (!tableBody || !addRowButton) {
+                    return;
+                }
+
+                let rowIndex = <?php echo !empty($property_categories) ? count($property_categories) : 0; ?>;
+
+                const categoryOptions = `<?php
+                    $options = '<option value="">Bitte wählen</option>';
+                    foreach ($property_categories as $category) {
+                        $options .= '<option value="' . esc_attr($category->id) . '">' . esc_html($category->name) . '</option>';
+                    }
+                    echo $options;
+                ?>`;
+
+                addRowButton.addEventListener('click', function () {
+                    const autoName = getInvoiceName();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <select name="vm_rows[${rowIndex}][property_cost_category_id]">
+                                ${categoryOptions}
+                            </select>
+                        </td>
+                        <td>
+                            <input
+                                type="text"
+                                name="vm_rows[${rowIndex}][name]"
+                                value="${autoName}"
+                                data-auto-name="${autoName}"
+                                style="width:100%;"
+                            >
+                        </td>
+                        <td>
+                            <input type="text" name="vm_rows[${rowIndex}][betrag]" placeholder="0,00">
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                    rowIndex++;
+                });
             });
-        });
         </script>
     <?php endif; ?>
 </div>

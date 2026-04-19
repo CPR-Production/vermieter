@@ -71,7 +71,9 @@
         </p>
 
         <p>
-            <button type="submit">Kosten speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Kosten speichern
+            </button>
         </p>
     </form>
 
@@ -80,12 +82,11 @@
         <table>
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Objekt</th>
-                    <th>Kategorie</th>
-                    <th>Betrag</th>
-                    <th>Datum</th>
-                    <th>Jahr</th>
+                    <th><i class="fa-solid fa-building"></i> Objekt</th>
+                    <th><i class="fa-solid fa-layer-group"></i> Kategorie</th>
+                    <th><i class="fa-solid fa-euro-sign"></i> Betrag</th>
+                    <th><i class="fa-solid fa-calendar"></i> Datum</th>
+                    <th><i class="fa-solid fa-calendar-day"></i> Jahr</th>
                 </tr>
             </thead>
             <tbody>

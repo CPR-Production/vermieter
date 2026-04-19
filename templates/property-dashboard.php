@@ -56,7 +56,7 @@ $vm_format_date = function ($date) {
     <?php return; endif; ?>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3>Objekt</h3>
+        <h3><i class="fa-solid fa-building"></i>Objekt</h3>
         <p>
             <strong><?php echo esc_html($property->name); ?></strong><br>
             <?php
@@ -74,7 +74,7 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3>Apartments / Einheiten</h3>
+        <h3><i class="fa-solid fa-door-open"></i> Apartments / Einheiten</h3>
 
         <?php if (!empty($apartments)) : ?>
             <table>
@@ -153,8 +153,7 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3>Mieter</h3>
-
+        <h3><i class="fa-solid fa-user"></i> Mieter</h3>
         <?php
         $has_tenants = false;
         foreach ($apartment_tenants as $rows) {
@@ -198,7 +197,7 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3>Kostenarten- / Umlageschlüsselzuordnungen</h3>
+        <h3><i class="fa-solid fa-money-bill-wave"></i> Kostenarten- / Umlageschlüsselzuordnungen</h3>
 
         <?php if (!empty($cost_categories)) : ?>
             <table>
@@ -245,8 +244,8 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3>Verteilerschlüssel</h3>
-
+        <h3><i class="fa-solid fa-cube"></i>Verteilerschlüssel</h3>
+        
         <?php if (!empty($distribution_keys)) : ?>
             <table>
                 <thead>

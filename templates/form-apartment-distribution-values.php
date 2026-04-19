@@ -67,7 +67,9 @@
             </table>
 
             <p>
-                <button type="submit">Verteilwerte speichern</button>
+                <button type="submit" class="vm-btn-primary">
+                    <i class="fa-solid fa-save"></i> Verteilwerte speichern
+                </button>
             </p>
         </form>
     <?php else : ?>

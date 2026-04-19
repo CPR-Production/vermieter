@@ -67,6 +67,7 @@ $edit_item = isset($edit_item) ? $edit_item : null;
 
         <p>
             <button type="submit"><?php echo $edit_item ? 'Zuordnung aktualisieren' : 'Zuordnung speichern'; ?></button>
+
             <?php if ($edit_item) : ?>
                 <a href="<?php echo esc_url(remove_query_arg('edit_id')); ?>" style="margin-left:10px;">Abbrechen</a>
             <?php endif; ?>
@@ -240,7 +241,9 @@ $edit_item = isset($edit_item) ? $edit_item : null;
             <?php endforeach; ?>
 
             <p>
-                <button type="submit">Verteilwerte speichern</button>
+                <button type="submit" class="vm-btn-primary">
+                    <i class="fa-solid fa-save"></i> Verteilwerte speichern
+                </button>
             </p>
         </form>
     <?php endif; ?>

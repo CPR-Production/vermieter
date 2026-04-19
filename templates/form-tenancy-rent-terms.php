@@ -34,7 +34,9 @@
         </p>
 
         <p>
-            <button type="submit">Kaltmiete speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Kaltmiete speichern
+            </button>
         </p>
     </form>
 
@@ -43,10 +45,10 @@
         <table>
             <thead>
                 <tr>
-                    <th>Wohnung</th>
-                    <th>Mieter</th>
-                    <th>Gültig ab</th>
-                    <th>Kaltmiete</th>
+                    <th><i class="fa-solid fa-building"></i> Wohnung</th>
+                    <th><i class="fa-solid fa-user"></i> Mieter</th>
+                    <th><i class="fa-solid fa-calendar"></i> Gültig ab</th>
+                    <th><i class="fa-solid fa-euro-sign"></i> Kaltmiete</th>
                 </tr>
             </thead>
             <tbody>

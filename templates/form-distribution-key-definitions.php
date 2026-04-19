@@ -57,7 +57,9 @@ foreach ($definitions as $definition) {
         </p>
 
         <p>
-            <button type="submit">Schlüsseldefinition speichern</button>
+            <button type="submit" class="vm-btn-primary">
+                <i class="fa-solid fa-save"></i> Schlüsseldefinition speichern
+            </button>
         </p>
     </form>
 
