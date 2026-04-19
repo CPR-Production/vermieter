@@ -268,6 +268,71 @@ class Vermieter_Apartment_Tenants {
 
         return $summary;
     }
+    
+    public static function get_usage_summary_by_apartment($apartment_id) {
+        $apartment = Vermieter_Apartments::get($apartment_id);
+        $summary = [
+            'in_inventory'   => false,
+            'inventory_start'=> null,
+            'inventory_end'  => null,
+            'inventory_days' => 0,
+            'tenant_days'    => 0,
+            'vacancy_days'   => 0,
+            'status'         => 'Nicht im Bestand',
+        ];
+
+        if (!$apartment) {
+            return $summary;
+        }
+
+        $range_start = !empty($apartment->acquisition_date) ? $apartment->acquisition_date : null;
+
+        if (empty($range_start)) {
+            $rows = self::get_by_apartment($apartment_id);
+
+            if (empty($rows)) {
+                return $summary;
+            }
+
+            $range_start = $rows[0]->move_in_date;
+        }
+
+        $today = current_time('Y-m-d');
+        $range_end = !empty($apartment->disposal_date) ? $apartment->disposal_date : $today;
+
+        if ($range_end < $range_start) {
+            return $summary;
+        }
+
+        $timeline = self::build_usage_timeline_for_range($apartment_id, $range_start, $range_end);
+
+        $summary['in_inventory'] = true;
+        $summary['inventory_start'] = $range_start;
+        $summary['inventory_end'] = $range_end;
+        $summary['inventory_days'] = self::count_days_inclusive($range_start, $range_end);
+
+        foreach ($timeline as $item) {
+            if (($item['type'] ?? '') === 'tenant') {
+                $summary['tenant_days'] += (int) ($item['days'] ?? 0);
+            }
+
+            if (($item['type'] ?? '') === 'vacancy') {
+                $summary['vacancy_days'] += (int) ($item['days'] ?? 0);
+            }
+        }
+
+        if (!empty($apartment->disposal_date) && $apartment->disposal_date < $today) {
+            $summary['status'] = 'Verkauft / aus Bestand';
+        } elseif (!empty($timeline)) {
+            $last_item = end($timeline);
+            $summary['status'] = (($last_item['type'] ?? '') === 'tenant') ? 'Vermietet' : 'Leerstand';
+            reset($timeline);
+        } else {
+            $summary['status'] = 'Leerstand';
+        }
+
+        return $summary;
+    }
 
     public static function get_vacancy_days_by_apartment_and_year($apartment_id, $year) {
         $timeline = self::get_timeline_with_vacancies_by_apartment_and_year($apartment_id, $year);

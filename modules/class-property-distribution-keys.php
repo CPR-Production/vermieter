@@ -226,4 +226,90 @@ class Vermieter_Property_Distribution_Keys {
 
         return $updated !== false;
     }
+
+    public static function delete($id) {
+        if (!is_user_logged_in()) {
+            return [
+                'success' => false,
+                'message' => 'Bitte einloggen.',
+            ];
+        }
+
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'vm_property_distribution_keys';
+        $values_table = $wpdb->prefix . 'vm_apartment_distribution_values';
+        $categories_table = $wpdb->prefix . 'vm_property_cost_categories';
+        $user_id = get_current_user_id();
+        $id = (int) $id;
+
+        if ($id <= 0) {
+            return [
+                'success' => false,
+                'message' => 'Ungültige Zuordnung.',
+            ];
+        }
+
+        $existing_id = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id
+                 FROM $table
+                 WHERE id = %d
+                   AND user_id = %d
+                 LIMIT 1",
+                $id,
+                $user_id
+            )
+        );
+
+        if (!$existing_id) {
+            return [
+                'success' => false,
+                'message' => 'Zuordnung nicht gefunden.',
+            ];
+        }
+
+        $usage_count = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*)
+                 FROM $categories_table
+                 WHERE property_distribution_key_id = %d
+                   AND user_id = %d",
+                $id,
+                $user_id
+            )
+        );
+
+        if ($usage_count > 0) {
+            return [
+                'success' => false,
+                'message' => 'Die Zuordnung wird bereits in Kostenkategorien verwendet und kann deshalb nicht gelöscht werden.',
+            ];
+        }
+
+        $wpdb->delete(
+            $values_table,
+            [
+                'property_distribution_key_id' => $id,
+                'user_id' => $user_id,
+            ],
+            ['%d', '%d']
+        );
+
+        $deleted = $wpdb->delete(
+            $table,
+            [
+                'id' => $id,
+                'user_id' => $user_id,
+            ],
+            ['%d', '%d']
+        );
+
+        return [
+            'success' => $deleted !== false && $deleted > 0,
+            'message' => ($deleted !== false && $deleted > 0)
+                ? 'Zuordnung gelöscht.'
+                : 'Zuordnung konnte nicht gelöscht werden.',
+        ];
+    }
 }

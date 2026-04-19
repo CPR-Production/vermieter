@@ -83,10 +83,10 @@ $vm_format_date = function ($date) {
                         <th>Name</th>
                         <th>Typ</th>
                         <th>Wohnfläche</th>
-                        <th>Personen</th>
-                        <th>Im Bestand seit</th>
-                        <th>Aus Bestand bis</th>
-                        <th>Aktion</th>
+                        <th><i class="fa-solid fa-user"></i>Personen</th>
+                        <th><i class="fa-solid fa-calendar"></i>Im Bestand seit</th>
+                        <th><i class="fa-solid fa-calendar"></i>Aus Bestand bis</th>
+                        <th><i class="fa-solid fa-ellipsis"></i></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -116,8 +116,8 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3>Nutzung / Leerstand <?php echo esc_html((string) $dashboard_year); ?></h3>
-
+        <h3><i class="fa-solid fa-building-user"></i>Nutzung / Leerstand gesamt</h3>
+        
         <?php if (!empty($apartments)) : ?>
             <table>
                 <thead>
@@ -153,7 +153,7 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-    <h3>Nebenkosten-Vollständigkeit</h3>
+    <h3><i class="fa-solid fa-file-invoice-dollar"></i>Nebenkosten-Vollständigkeit</h3>
 
     <?php if (!empty($apartments) && !empty($all_cost_years)) : ?>
         <table>

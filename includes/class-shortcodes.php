@@ -241,7 +241,7 @@ class Vermieter_Shortcodes {
         if (!empty($apartments)) {
             foreach ($apartments as $apartment) {
                 $apartment_tenants[$apartment->id] = Vermieter_Apartment_Tenants::get_by_apartment($apartment->id);
-                $apartment_usage_summaries[$apartment->id] = Vermieter_Apartment_Tenants::get_usage_summary_by_apartment_and_year($apartment->id, $dashboard_year);
+                $apartment_usage_summaries[$apartment->id] = Vermieter_Apartment_Tenants::get_usage_summary_by_apartment($apartment->id);
 
                 $start_year = !empty($apartment->acquisition_date)
                     ? (int) date('Y', strtotime($apartment->acquisition_date))
@@ -509,6 +509,34 @@ class Vermieter_Shortcodes {
 
                 $message = $id ? 'Schlüssel dem Objekt zugeordnet.' : 'Zuordnung konnte nicht gespeichert werden.';
             }
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'update_property_distribution_key_inline') {
+            check_admin_referer('vm_update_property_distribution_key_inline');
+
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+            $result = Vermieter_Property_Distribution_Keys::update($record_id, [
+                'property_id'                    => (int) ($_POST['vm_property_id'] ?? 0),
+                'distribution_key_definition_id' => (int) ($_POST['vm_distribution_key_definition_id'] ?? 0),
+                'applies_to_type_key'            => sanitize_text_field(wp_unslash($_POST['vm_applies_to_type_key'] ?? 'alle')),
+            ]);
+
+            $message = $result
+                ? 'Zuordnung aktualisiert.'
+                : 'Zuordnung konnte nicht aktualisiert werden.';
+
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_property_distribution_key') {
+            check_admin_referer('vm_delete_property_distribution_key');
+
+            $result = Vermieter_Property_Distribution_Keys::delete((int) ($_POST['vm_record_id'] ?? 0));
+            $message = !empty($result['message']) ? $result['message'] : 'Zuordnung konnte nicht gelöscht werden.';
+
+            $edit_item = null;
+            $edit_id = 0;
         }
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_inline_distribution_values') {
