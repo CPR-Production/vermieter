@@ -1,22 +1,6 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
 <?php
-$vm_get_page_url = function ($slug, $query = []) {
-    $page = get_page_by_path($slug, OBJECT, 'page');
-
-    if (!$page) {
-        return '#';
-    }
-
-    $url = get_permalink($page->ID);
-
-    if (!empty($query)) {
-        $url = add_query_arg($query, $url);
-    }
-
-    return $url;
-};
-
 $vm_format_date = function ($date) {
     if (empty($date) || $date === '0000-00-00') {
         return '—';
@@ -69,7 +53,7 @@ $vm_format_date = function ($date) {
             ?>
         </p>
         <p>
-            <a href="<?php echo esc_url($vm_get_page_url('vermieter-objekte', ['edit_id' => (int) $property->id])); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url(vm_get_page_url('vermieter-objekte', ['edit_id' => (int) $property->id])); ?>">Bearbeiten</a>
         </p>
     </div>
 
@@ -99,7 +83,7 @@ $vm_format_date = function ($date) {
                             <td><?php echo esc_html($vm_format_date($apartment->acquisition_date ?? '')); ?></td>
                             <td><?php echo esc_html($vm_format_date($apartment->disposal_date ?? '')); ?></td>
                             <td>
-                                <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnungen', ['edit_id' => (int) $apartment->id])); ?>">Bearbeiten</a>
+                                <a href="<?php echo esc_url(vm_get_page_url('vermieter-wohnungen', ['edit_id' => (int) $apartment->id])); ?>">Bearbeiten</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -108,7 +92,7 @@ $vm_format_date = function ($date) {
         <?php else : ?>
             <p style="color:#666;">
                 Keine Einheiten vorhanden.
-                <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnungen')); ?>">
+                <a href="<?php echo esc_url(vm_get_page_url('vermieter-wohnungen')); ?>">
                     Jetzt anlegen →
                 </a>
             </p>
@@ -255,7 +239,7 @@ $vm_format_date = function ($date) {
         <?php endif; ?>
 
         <p>
-            <a href="<?php echo esc_url($vm_get_page_url('vermieter-wohnung-mieter')); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url(vm_get_page_url('vermieter-wohnung-mieter')); ?>">Bearbeiten</a>
         </p>
     </div>
 
@@ -302,7 +286,7 @@ $vm_format_date = function ($date) {
         <?php endif; ?>
 
         <p>
-            <a href="<?php echo esc_url($vm_get_page_url('vermieter-objekt-kostenkategorien')); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url(vm_get_page_url('vermieter-objekt-kostenkategorien', ['property_id' => (int) $selected_property_id])); ?>" class="button" aria-label="Kostenarten-Zuordnungen bearbeiten">Bearbeiten</a>
         </p>
     </div>
 
@@ -335,7 +319,7 @@ $vm_format_date = function ($date) {
         <?php endif; ?>
 
         <p>
-            <a href="<?php echo esc_url($vm_get_page_url('vermieter-objekt-schluessel')); ?>">Bearbeiten</a>
+            <a href="<?php echo esc_url(vm_get_page_url('vermieter-objekt-schluessel')); ?>">Bearbeiten</a>
         </p>
     </div>
 </div>

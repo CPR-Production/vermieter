@@ -44,6 +44,7 @@
 </form>
 
 <?php if (!empty($definitions)) : ?>
+    <div class="vm-wrap">
     <h3>Vorhandene Kategoriedefinitionen</h3>
 
     <table>
@@ -66,4 +67,5 @@
             <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 <?php endif; ?>

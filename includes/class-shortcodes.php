@@ -322,6 +322,7 @@ class Vermieter_Shortcodes {
 
         $message = '';
         $selected_year = isset($_REQUEST['vm_year']) ? (int) $_REQUEST['vm_year'] : (int) current_time('Y');
+        $selected_property_id = isset($_REQUEST['property_id']) ? (int) $_REQUEST['property_id'] : 0;
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_apartment_tenant') {
             check_admin_referer('vm_save_apartment_tenant');
@@ -338,12 +339,21 @@ class Vermieter_Shortcodes {
                 : 'Zuordnung konnte nicht gespeichert werden. Bitte Zeiträume prüfen.';
         }
 
+        $apartments = Vermieter_Apartments::get_all_by_user();
+
+        if ($selected_property_id > 0) {
+            $apartments = array_values(array_filter($apartments, function ($apartment) use ($selected_property_id) {
+                return (int) ($apartment->property_id ?? 0) === $selected_property_id;
+            }));
+        }
+
         return vm_render_template('form-apartment-tenants.php', [
-            'message'           => $message,
-            'selected_year'     => $selected_year,
-            'apartments'        => Vermieter_Apartments::get_all_by_user(),
-            'tenants'           => Vermieter_Tenants::get_all_by_user(),
-            'apartment_tenants' => Vermieter_Apartment_Tenants::get_all_by_user(),
+            'message'              => $message,
+            'selected_year'        => $selected_year,
+            'selected_property_id' => $selected_property_id,
+            'apartments'           => $apartments,
+            'tenants'              => Vermieter_Tenants::get_all_by_user(),
+            'apartment_tenants'    => Vermieter_Apartment_Tenants::get_all_by_user(),
         ]);
     }
 
@@ -381,6 +391,15 @@ class Vermieter_Shortcodes {
 
         $message = '';
 
+        $preselected_property_id = isset($_GET['property_id']) ? (int) $_GET['property_id'] : 0;
+
+        $default_item = (object) [
+            'property_id' => $preselected_property_id,
+            'cost_category_definition_id' => 0,
+            'applies_to_type_key' => 'alle',
+            'property_distribution_key_id' => 0,
+        ];
+
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property_cost_category') {
             check_admin_referer('vm_save_property_cost_category');
 
@@ -393,15 +412,74 @@ class Vermieter_Shortcodes {
                 'is_recurring'                 => !empty($_POST['vm_is_recurring']) ? 1 : 0,
             ]);
 
-            $message = !empty($result['message']) ? $result['message'] : 'Speichern fehlgeschlagen.';
+            $message = $result
+                ? 'Zuordnung gespeichert.'
+                : 'Speichern fehlgeschlagen.';
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'update_property_cost_category_inline') {
+            check_admin_referer('vm_update_property_cost_category_inline');
+
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+
+            $result = Vermieter_Property_Cost_Categories::update($record_id, [
+                'property_id' => (int) ($_POST['vm_property_id'] ?? 0),
+                'cost_category_definition_id' => (int) ($_POST['vm_cost_category_definition_id'] ?? 0),
+                'allocation_type' => sanitize_text_field(wp_unslash($_POST['vm_allocation_type'] ?? 'wohnflaeche')),
+                'applies_to_type_key' => sanitize_text_field(wp_unslash($_POST['vm_applies_to_type_key'] ?? 'alle')),
+                'property_distribution_key_id' => !empty($_POST['vm_property_distribution_key_id'])
+                    ? (int) $_POST['vm_property_distribution_key_id']
+                    : 0,
+                'is_recurring' => !empty($_POST['vm_is_recurring']) ? 1 : 0,
+            ]);
+
+            $message = $result
+                ? 'Zuordnung aktualisiert.'
+                : 'Zuordnung konnte nicht aktualisiert werden.';
+
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_property_cost_category') {
+            check_admin_referer('vm_delete_property_cost_category');
+
+            $result = Vermieter_Property_Cost_Categories::delete((int) ($_POST['vm_record_id'] ?? 0));
+            $message = !empty($result['message']) ? $result['message'] : 'Zuordnung konnte nicht gelöscht werden.';
+
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        $edit_item = $edit_item ?: $default_item;
+        $properties = Vermieter_Properties::get_all();
+        $definitions = Vermieter_Cost_Category_Definitions::get_all_by_user();
+        $distribution_keys = Vermieter_Property_Distribution_Keys::get_all_by_user();
+
+        $assigned_categories = $preselected_property_id
+            ? Vermieter_Property_Cost_Categories::get_by_property($preselected_property_id)
+            : Vermieter_Property_Cost_Categories::get_all_by_user();
+
+        $active_property = null;
+
+        if ($preselected_property_id > 0) {
+            foreach ($properties as $property) {
+                if ((int) $property->id === (int) $preselected_property_id) {
+                    $active_property = $property;
+                    break;
+                }
+            }
         }
 
         return vm_render_template('form-property-cost-categories.php', [
             'message'             => $message,
-            'properties'          => Vermieter_Properties::get_all(),
-            'definitions'         => Vermieter_Cost_Category_Definitions::get_all_by_user(),
-            'property_categories' => Vermieter_Property_Cost_Categories::get_all_by_user(),
-            'assigned_keys'       => Vermieter_Property_Distribution_Keys::get_all_by_user(),
+            'properties'          => $properties,
+            'definitions'         => $definitions,
+            'active_property'     => $active_property,
+            'assigned_categories' => $assigned_categories,
+            'distribution_keys'   => $distribution_keys,
+            'assigned_keys'       => $distribution_keys, // optional für bestehendes Formular oben
+            'edit_item'           => $edit_item,
             'apportionment_types' => Vermieter_Apportionment_Types::get_options(),
         ]);
     }
@@ -483,8 +561,18 @@ class Vermieter_Shortcodes {
         $message = '';
         $distribution_values_map = [];
         $apartments_by_property_distribution_key = [];
+        $preselected_property_id = isset($_GET['property_id']) ? (int) $_GET['property_id'] : 0;
         $edit_id = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : 0;
         $edit_item = $edit_id ? Vermieter_Property_Distribution_Keys::get($edit_id) : null;
+
+        if (!$edit_item && $preselected_property_id > 0) {
+            $edit_item = (object) [
+                'id' => 0,
+                'property_id' => $preselected_property_id,
+                'distribution_key_definition_id' => 0,
+                'applies_to_type_key' => 'alle',
+            ];
+        }
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_property_distribution_key') {
             check_admin_referer('vm_save_property_distribution_key');

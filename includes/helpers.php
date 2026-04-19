@@ -114,3 +114,22 @@ function vm_label($key) {
 
     return $labels[$key] ?? $key;
 }
+
+if (!function_exists('vm_get_page_url')) {
+    function vm_get_page_url($slug, $args = [])
+    {
+        $page = get_page_by_path($slug);
+
+        if (!$page) {
+            return add_query_arg($args, home_url('/' . ltrim($slug, '/') . '/'));
+        }
+
+        $url = get_permalink($page->ID);
+
+        if (!empty($args)) {
+            $url = add_query_arg($args, $url);
+        }
+
+        return $url;
+    }
+}
