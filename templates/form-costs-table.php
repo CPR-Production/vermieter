@@ -8,6 +8,8 @@
     <?php endif; ?>
 
     <form method="get" style="margin-bottom:20px;">
+        <input type="hidden" name="vm_year" id="vm_year_filter" value="<?php echo esc_attr($period['year']); ?>">
+
         <p>
             <label for="vm_property_id_filter">Objekt</label><br>
             <select name="vm_property_id" id="vm_property_id_filter" onchange="this.form.submit()" required>
@@ -109,6 +111,7 @@
                 const yearField = document.getElementById('vm_period_year');
                 const periodStartField = document.getElementById('vm_period_start');
                 const periodEndField = document.getElementById('vm_period_end');
+                const yearFilterField = document.getElementById('vm_year_filter');
 
                 const getInvoiceName = function () {
                     const year = parseInt(yearField.value, 10);
@@ -144,6 +147,10 @@
 
                         periodStartField.value = year + '-01-01';
                         periodEndField.value = year + '-12-31';
+                        
+                        if (yearFilterField) {
+                            yearFilterField.value = year;
+                        }
 
                         updateAutoNames();
                     };

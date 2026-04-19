@@ -7,6 +7,12 @@
         <p><strong><?php echo esc_html($message); ?></strong></p>
     <?php endif; ?>
 
+    <?php if ($selected_property_id > 0) : ?>
+        <p style="color:#666; margin-top:-8px;">
+            Vorausgewählt aus dem Dashboard.
+        </p>
+    <?php endif; ?>
+
     <form method="post">
         <?php wp_nonce_field('vm_save_cost'); ?>
         <input type="hidden" name="vm_action" value="save_cost">
@@ -16,7 +22,7 @@
             <select name="vm_property_id" id="vm_property_id" required>
                 <option value="">Bitte wählen</option>
                 <?php foreach ($properties as $property) : ?>
-                    <option value="<?php echo esc_attr($property->id); ?>">
+                    <option value="<?php echo esc_attr($property->id); ?>" <?php selected((int) $selected_property_id, (int) $property->id); ?>>
                         <?php echo esc_html($property->name . ' - ' . $property->street . ' ' . $property->house_number); ?>
                     </option>
                 <?php endforeach; ?>
@@ -39,6 +45,9 @@
                 <?php endforeach; ?>
             </select>
         </p>
+        <?php if (empty($property_categories)) : ?>
+            <p style="color:#856404;">Für das gewählte Objekt sind noch keine Kostenkategorien zugeordnet.</p>
+        <?php endif; ?>
 
         <p>
             <label for="vm_name">Rechnungsname</label><br>

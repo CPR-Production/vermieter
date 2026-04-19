@@ -153,6 +153,69 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
+    <h3>Nebenkosten-Vollständigkeit</h3>
+
+    <?php if (!empty($apartments) && !empty($all_cost_years)) : ?>
+        <table>
+            <thead>
+                <tr>
+                    <th>Einheit</th>
+                    <?php foreach ($all_cost_years as $year) : ?>
+                        <th><?php echo esc_html((string) $year); ?></th>
+                    <?php endforeach; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($apartments as $apartment) : ?>
+                    <tr>
+                        <td><?php echo esc_html($apartment->name); ?></td>
+
+                        <?php foreach ($all_cost_years as $year) : ?>
+                            <?php
+                            $status = $cost_status_matrix[$apartment->id][$year] ?? 'not_relevant';
+                            $label = '—';
+                            $style = 'background:#f5f5f5; color:#666; text-align:center; font-weight:bold;';
+
+                            if ($status === 'complete') {
+                                $label = '✓';
+                                $style = 'background:#d4edda; color:#155724; text-align:center; font-weight:bold;';
+                            } elseif ($status === 'missing') {
+                                $label = '!';
+                                $style = 'background:#fff3cd; color:#856404; text-align:center; font-weight:bold;';
+                            }
+                            ?>
+                            <?php
+                            $cost_form_url = home_url('/vermieter-kosten-erfassen/');
+                            ?>
+                            <td style="<?php echo esc_attr($style); ?>">
+                                <?php if ($status === 'missing') : ?>
+                                    <a href="<?php echo esc_url(add_query_arg([
+                                        'vm_property_id' => $selected_property_id,
+                                        'vm_year'        => $year,
+                                    ], $cost_form_url)); ?>" style="color:inherit; font-weight:bold; text-decoration:none;" title="Kosten für <?php echo esc_attr((string) $year); ?> erfassen">
+                                        <?php echo esc_html($label); ?>
+                                    </a>
+                                <?php else : ?>
+                                    <?php echo esc_html($label); ?>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <p style="color:#666; margin-top:8px;">
+            ✓ = Kosten für das Jahr vorhanden, ! = keine Kosten erfasst, — = Einheit nicht im Bestand
+        </p>
+    <?php elseif (!empty($apartments)) : ?>
+        <p>Für die vorhandenen Einheiten konnten keine Bestandsjahre ermittelt werden.</p>
+    <?php else : ?>
+        <p>Keine Einheiten vorhanden.</p>
+    <?php endif; ?>
+</div>
+
+    <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
         <h3><i class="fa-solid fa-user"></i> Mieter</h3>
         <?php
         $has_tenants = false;

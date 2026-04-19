@@ -129,4 +129,25 @@ class Vermieter_Costs {
             )
         );
     }
+
+    public static function get_recorded_years_by_property($property_id) {
+        global $wpdb;
+
+        $table_costs = $wpdb->prefix . 'vm_costs';
+
+        $years = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT period_year
+                FROM $table_costs
+                WHERE property_id = %d
+                AND user_id = %d
+                AND period_year > 0
+                ORDER BY period_year ASC",
+                (int) $property_id,
+                get_current_user_id()
+            )
+        );
+
+        return array_map('intval', $years);
+    }
 }
