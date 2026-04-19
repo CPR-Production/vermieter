@@ -227,6 +227,27 @@ class Vermieter_Shortcodes {
         $cost_categories = $selected_property_id ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id) : [];
         $distribution_keys = $selected_property_id ? Vermieter_Property_Distribution_Keys::get_by_property($selected_property_id) : [];
 
+        if (!empty($cost_categories)) {
+            usort($cost_categories, function ($a, $b) {
+                return strcasecmp(
+                    (string) ($a->name ?? ''),
+                    (string) ($b->name ?? '')
+                );
+            });
+        }
+
+        if (!empty($distribution_keys)) {
+            usort($distribution_keys, function ($a, $b) {
+                return strcasecmp(
+                    (string) ($a->label ?? ''),
+                    (string) ($b->label ?? '')
+                );
+            });
+        }
+
+        $cost_category_count = count($cost_categories);
+        $distribution_key_count = count($distribution_keys);
+
         $apartment_tenants = [];
         $apartment_usage_summaries = [];
         $dashboard_year = (int) current_time('Y');
@@ -276,6 +297,8 @@ class Vermieter_Shortcodes {
             'property'                  => $property,
             'apartments'                => $apartments,
             'cost_categories'           => $cost_categories,
+            'cost_category_count'       => $cost_category_count,
+            'distribution_key_count'    => $distribution_key_count,
             'distribution_keys'         => $distribution_keys,
             'apartment_tenants'         => $apartment_tenants,
             'apartment_usage_summaries' => $apartment_usage_summaries,

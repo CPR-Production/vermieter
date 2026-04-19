@@ -244,7 +244,14 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-        <h3><i class="fa-solid fa-money-bill-wave"></i> Kostenarten- / Umlageschlüsselzuordnungen</h3>
+        <h3>
+            <i class="fa-solid fa-money-bill-wave"></i>
+            Kostenarten- / Umlageschlüsselzuordnungen
+        </h3>
+        <p>
+            <?php echo (int) ($cost_category_count ?? 0); ?> Kategorien,
+            <?php echo (int) ($distribution_key_count ?? 0); ?> Schlüssel
+        </p>
 
         <?php if (!empty($cost_categories)) : ?>
             <table>
