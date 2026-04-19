@@ -122,7 +122,7 @@ class Vermieter_Costs {
                  WHERE c.property_id = %d
                    AND c.period_year = %d
                    AND c.user_id = %d
-                 ORDER BY c.invoice_date ASC, c.id ASC",
+                 ORDER BY d.name ASC, c.name ASC, c.invoice_date ASC, c.id ASC",
                 (int) $property_id,
                 (int) $year,
                 get_current_user_id()

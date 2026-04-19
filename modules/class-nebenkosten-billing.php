@@ -120,10 +120,17 @@ class Vermieter_Nebenkosten_Billing
                         ' | tenant_factor=' . $tenant_factor
                     );
 
+                    $category_name = trim((string) ($property_cost_category->name ?? ''));
+                    $display_cost_name = trim((string) ($cost->name ?? ''));
+
+                    if ($display_cost_name !== '' && $category_name !== '' && stripos($display_cost_name, $category_name) === false) {
+                        $display_cost_name .= ' - ' . $category_name;
+                    }
+
                     $tenant_statements[$statement_key]['cost_items'][] = [
                         'cost_id'               => (int) $cost->id,
-                        'cost_name'             => $cost->name,
-                        'category_name'         => $property_cost_category->name ?? '',
+                        'cost_name'             => $display_cost_name,
+                        'category_name'         => $category_name,
                         'allocation_type'       => $property_cost_category->allocation_type ?? '',
                         'apartment_id'          => (int) $apartment_id,
                         'apartment_name'        => self::find_apartment_name($eligible_apartments, $apartment_id),
@@ -559,6 +566,7 @@ class Vermieter_Nebenkosten_Billing
 
         foreach ($grouped as $group_key => $group) {
             $grouped[$group_key]['cost_items'] = self::merge_cost_items($group['cost_items']);
+            self::sort_cost_items_by_category($grouped[$group_key]['cost_items']);
 
             $recalculated_cost_sum = 0.0;
             foreach ($grouped[$group_key]['cost_items'] as $item) {
@@ -622,6 +630,35 @@ class Vermieter_Nebenkosten_Billing
             'advance_total'             => round($advance_total, 2),
             'balance_total'             => round($balance_total, 2),
         ];
+    }
+
+
+    protected static function sort_cost_items_by_category(&$items)
+    {
+        if (empty($items) || !is_array($items)) {
+            return;
+        }
+
+        usort($items, function ($a, $b) {
+            $category_a = mb_strtolower(trim((string) ($a['category_name'] ?? '')));
+            $category_b = mb_strtolower(trim((string) ($b['category_name'] ?? '')));
+
+            if ($category_a !== $category_b) {
+                return $category_a <=> $category_b;
+            }
+
+            $name_a = mb_strtolower(trim((string) ($a['cost_name'] ?? '')));
+            $name_b = mb_strtolower(trim((string) ($b['cost_name'] ?? '')));
+
+            if ($name_a !== $name_b) {
+                return $name_a <=> $name_b;
+            }
+
+            $apartment_a = mb_strtolower(trim((string) ($a['apartment_name'] ?? '')));
+            $apartment_b = mb_strtolower(trim((string) ($b['apartment_name'] ?? '')));
+
+            return $apartment_a <=> $apartment_b;
+        });
     }
 
     protected static function merge_cost_items($items)

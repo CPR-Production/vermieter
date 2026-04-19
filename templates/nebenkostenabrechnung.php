@@ -168,11 +168,10 @@
                                     <th>Kostenposition</th>
                                     <th>Einheit</th>
                                     <th>Gesamtkosten (€)</th>
-                                    <th>Schlüssel</th>
-                                    <th>Aufteilung gesamt</th>
+                                    <th>Verteiler / Schlüssel</th>
                                     <?php if ($show_time_columns): ?>
-                                        <th>Tageanteil</th>
                                         <th>Anteil vor Zeitfaktor (€)</th>
+                                        <th>Tageanteil</th>
                                     <?php endif; ?>
                                     <th>Anteil (€)</th>
                                 </tr>
@@ -180,21 +179,23 @@
                             <tbody>
                                 <?php
                                 $sum_total_cost = 0.0;
+                                $sum_share_before_factor = 0.0;
                                 $sum_tenant_share = 0.0;
                                 ?>
                                 <?php foreach ($tenant_statement['cost_items'] as $item) : ?>
                                     <?php
                                     $sum_total_cost += (float) ($item['total_cost'] ?? 0);
+                                    $sum_share_before_factor += (float) ($item['share_before_factor'] ?? 0);
                                     $sum_tenant_share += (float) ($item['tenant_share'] ?? 0);
                                     ?>
                                     <tr>
                                         <td><?php echo esc_html($item['cost_name']); ?></td>
                                         <td><?php echo esc_html($item['apartment_name']); ?></td>
                                         <td><?php echo esc_html(vm_format_money($item['total_cost'] ?? 0)); ?></td>
-                                        <td><?php echo esc_html(number_format((float)($item['tenant_value'] ?? 0), 2, ',', '.')); ?></td>
-                                        <td><?php echo esc_html(number_format((float)($item['total_value'] ?? 0), 2, ',', '.')); ?></td>
+                                        <td><?php echo esc_html(number_format((float)($item['tenant_value'] ?? 0), 2, ',', '.')); ?> / <?php echo esc_html(number_format((float)($item['total_value'] ?? 0), 2, ',', '.')); ?></td>
 
                                         <?php if ($show_time_columns): ?>
+                                            <td><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
                                             <td>
                                                 <?php
                                                 $occupied_days = (int) ($item['occupied_days'] ?? 0);
@@ -206,8 +207,6 @@
                                                 );
                                                 ?>
                                             </td>
-
-                                            <td><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
                                         <?php endif; ?>
 
                                         <td><?php echo esc_html(vm_format_money($item['tenant_share'] ?? 0)); ?></td>
@@ -219,9 +218,8 @@
                                     <th colspan="2">Summe</th>
                                     <th><?php echo esc_html(vm_format_money($sum_total_cost)); ?></th>
                                     <th></th>
-                                    <th></th>
                                     <?php if ($show_time_columns): ?>
-                                        <th></th>
+                                        <th><?php echo esc_html(vm_format_money($sum_share_before_factor)); ?></th>
                                         <th></th>
                                     <?php endif; ?>
                                     <th><?php echo esc_html(vm_format_money($sum_tenant_share)); ?></th>
