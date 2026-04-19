@@ -5,8 +5,7 @@ if (!defined('ABSPATH')) {
 
 class Vermieter_Property_Cost_Categories
 {
-    public static function add($data)
-    {
+    public static function add($data) {
         if (!is_user_logged_in()) {
             return false;
         }
@@ -64,8 +63,7 @@ class Vermieter_Property_Cost_Categories
         return $inserted ? (int) $wpdb->insert_id : false;
     }
 
-    public static function update($id, $data)
-    {
+    public static function update($id, $data) {
         if (!is_user_logged_in()) {
             return false;
         }
@@ -129,8 +127,7 @@ class Vermieter_Property_Cost_Categories
         return $updated !== false;
     }
 
-    public static function delete($id)
-    {
+    public static function delete($id) {
         if (!is_user_logged_in()) {
             return [
                 'success' => false,
@@ -205,6 +202,47 @@ class Vermieter_Property_Cost_Categories
         ];
     }
 
+    public static function get($id) {
+        global $wpdb;
+
+        $table_link = $wpdb->prefix . 'vm_property_cost_categories';
+        $table_def = $wpdb->prefix . 'vm_cost_category_definitions';
+        $table_prop = $wpdb->prefix . 'vm_properties';
+        $table_keys = $wpdb->prefix . 'vm_property_distribution_keys';
+        $table_key_defs = $wpdb->prefix . 'vm_distribution_key_definitions';
+
+        return $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT
+                    pcc.*,
+                    d.name AS name,
+                    d.name AS category_name,
+                    d.description AS category_description,
+                    p.name AS property_name,
+                    p.street AS property_street,
+                    p.house_number AS property_house_number,
+                    p.zip_code AS property_zip_code,
+                    p.city AS property_city,
+                    pk.distribution_key_definition_id,
+                    kd.label AS distribution_key_label,
+                    kd.label AS distribution_label,
+                    kd.unit_code AS distribution_key_unit_code,
+                    kd.unit_code AS distribution_unit_code,
+                    kd.total_value AS distribution_total_value
+                FROM $table_link pcc
+                LEFT JOIN $table_def d ON pcc.cost_category_definition_id = d.id
+                LEFT JOIN $table_prop p ON pcc.property_id = p.id
+                LEFT JOIN $table_keys pk ON pcc.property_distribution_key_id = pk.id
+                LEFT JOIN $table_key_defs kd ON pk.distribution_key_definition_id = kd.id
+                WHERE pcc.id = %d
+                AND pcc.user_id = %d
+                LIMIT 1",
+                (int) $id,
+                get_current_user_id()
+            )
+        );
+    }
+    
     public static function get_all_by_user($user_id = 0){
         global $wpdb;
 
