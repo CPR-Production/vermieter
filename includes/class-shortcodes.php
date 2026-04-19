@@ -554,6 +554,13 @@ class Vermieter_Shortcodes {
 
         $selected_property_id = isset($_REQUEST['vm_property_id']) ? (int) $_REQUEST['vm_property_id'] : 0;
         $selected_year = isset($_REQUEST['vm_year']) ? (int) $_REQUEST['vm_year'] : 0;
+        $edit_id = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : 0;
+        $edit_item = $edit_id ? Vermieter_Costs::get($edit_id) : null;
+
+        if ($edit_item) {
+            $selected_property_id = (int) $edit_item->property_id;
+            $selected_year = (int) $edit_item->period_year;
+        }
 
         if ($selected_year <= 0) {
             $selected_year = (int) current_time('Y');
@@ -601,7 +608,70 @@ class Vermieter_Shortcodes {
             );
 
             $message = $count ? $count . ' Position(en) gespeichert.' : 'Keine Positionen gespeichert.';
+            $edit_item = null;
+            $edit_id = 0;
         }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'update_cost') {
+            check_admin_referer('vm_update_cost');
+
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+            $selected_property_id = (int) ($_POST['vm_property_id'] ?? 0);
+            $selected_year = (int) ($_POST['vm_period_year'] ?? 0);
+
+            if ($selected_year <= 0) {
+                $selected_year = (int) current_time('Y');
+            }
+
+            $period = [
+                'year'  => $selected_year,
+                'start' => sanitize_text_field(wp_unslash($_POST['vm_period_start'] ?? ($selected_year . '-01-01'))),
+                'end'   => sanitize_text_field(wp_unslash($_POST['vm_period_end'] ?? ($selected_year . '-12-31'))),
+            ];
+
+            $result = Vermieter_Costs::update($record_id, [
+                'property_id'               => $selected_property_id,
+                'property_cost_category_id' => (int) ($_POST['vm_property_cost_category_id'] ?? 0),
+                'name'                      => sanitize_text_field(wp_unslash($_POST['vm_name'] ?? '')),
+                'betrag'                    => vm_post_decimal('vm_betrag'),
+                'invoice_date'              => sanitize_text_field(wp_unslash($_POST['vm_invoice_date'] ?? '')),
+                'period_start'              => $period['start'],
+                'period_end'                => $period['end'],
+                'period_year'               => $selected_year,
+            ]);
+
+            $message = $result ? 'Kostenposition aktualisiert.' : 'Kostenposition konnte nicht aktualisiert werden.';
+            $property_categories = $selected_property_id
+                ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id)
+                : [];
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_cost') {
+            check_admin_referer('vm_delete_cost');
+
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+            $selected_property_id = (int) ($_POST['vm_property_id'] ?? 0);
+            $selected_year = (int) ($_POST['vm_year'] ?? 0);
+
+            if ($selected_year <= 0) {
+                $selected_year = (int) current_time('Y');
+            }
+
+            $result = Vermieter_Costs::delete($record_id);
+            $message = $result ? 'Kostenposition gelöscht.' : 'Kostenposition konnte nicht gelöscht werden.';
+
+            $property_categories = $selected_property_id
+                ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id)
+                : [];
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        $costs = ($selected_property_id > 0 && $selected_year > 0)
+            ? Vermieter_Costs::get_by_property_and_year($selected_property_id, $selected_year)
+            : [];
 
         return vm_render_template('form-costs-table.php', [
             'message'              => $message,
@@ -610,6 +680,9 @@ class Vermieter_Shortcodes {
             'selected_property_id' => $selected_property_id,
             'selected_year'        => $selected_year,
             'property_categories'  => $property_categories,
+            'costs'                => $costs,
+            'edit_item'            => $edit_item,
+            'edit_id'              => $edit_id,
         ]);
     }
 
@@ -906,6 +979,13 @@ class Vermieter_Shortcodes {
 
         $selected_property_id = isset($_REQUEST['vm_property_id']) ? (int) $_REQUEST['vm_property_id'] : 0;
         $selected_year = isset($_REQUEST['vm_year']) ? (int) $_REQUEST['vm_year'] : 0;
+        $edit_id = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : 0;
+        $edit_item = $edit_id ? Vermieter_Costs::get($edit_id) : null;
+
+        if ($edit_item) {
+            $selected_property_id = (int) $edit_item->property_id;
+            $selected_year = (int) $edit_item->period_year;
+        }
 
         if ($selected_year <= 0) {
             $selected_year = (int) current_time('Y');
@@ -955,13 +1035,74 @@ class Vermieter_Shortcodes {
             $message = $id ? 'Kosten gespeichert.' : 'Kosten konnten nicht gespeichert werden.';
         }
 
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'update_cost_single') {
+            check_admin_referer('vm_update_cost_single');
+
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+            $selected_property_id = (int) ($_POST['vm_property_id'] ?? 0);
+            $selected_year = (int) ($_POST['vm_period_year'] ?? 0);
+
+            if ($selected_year <= 0) {
+                $selected_year = (int) current_time('Y');
+            }
+
+            $period = [
+                'year'  => $selected_year,
+                'start' => sanitize_text_field(wp_unslash($_POST['vm_period_start'] ?? ($selected_year . '-01-01'))),
+                'end'   => sanitize_text_field(wp_unslash($_POST['vm_period_end'] ?? ($selected_year . '-12-31'))),
+            ];
+
+            $property_categories = $selected_property_id > 0
+                ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id)
+                : [];
+
+            $result = Vermieter_Costs::update($record_id, [
+                'property_id'               => $selected_property_id,
+                'property_cost_category_id' => (int) ($_POST['vm_property_cost_category_id'] ?? 0),
+                'name'                      => sanitize_text_field(wp_unslash($_POST['vm_name'] ?? '')),
+                'betrag'                    => vm_post_decimal('vm_betrag'),
+                'invoice_date'              => sanitize_text_field(wp_unslash($_POST['vm_invoice_date'] ?? '')),
+                'period_start'              => $period['start'],
+                'period_end'                => $period['end'],
+                'period_year'               => $selected_year,
+            ]);
+
+            $message = $result ? 'Kosten aktualisiert.' : 'Kosten konnten nicht aktualisiert werden.';
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_cost_single') {
+            check_admin_referer('vm_delete_cost_single');
+
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+            $selected_property_id = (int) ($_POST['vm_property_id'] ?? 0);
+            $selected_year = (int) ($_POST['vm_year'] ?? 0);
+
+            if ($selected_year <= 0) {
+                $selected_year = (int) current_time('Y');
+            }
+
+            $result = Vermieter_Costs::delete($record_id);
+            $message = $result ? 'Kosten gelöscht.' : 'Kosten konnten nicht gelöscht werden.';
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        $costs = ($selected_property_id > 0 && $selected_year > 0)
+            ? Vermieter_Costs::get_by_property_and_year($selected_property_id, $selected_year)
+            : Vermieter_Costs::get_all_by_user();
+
         return vm_render_template('form-costs.php', [
             'message'              => $message,
             'period'               => $period,
             'properties'           => $properties,
             'selected_property_id' => $selected_property_id,
+            'selected_year'        => $selected_year,
             'property_categories'  => $property_categories,
-            'costs'                => Vermieter_Costs::get_all_by_user(),
+            'costs'                => $costs,
+            'edit_item'            => $edit_item,
+            'edit_id'              => $edit_id,
         ]);
     }
 

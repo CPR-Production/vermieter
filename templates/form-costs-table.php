@@ -201,4 +201,120 @@
             });
         </script>
     <?php endif; ?>
+
+    <?php if ($selected_property_id > 0 && $selected_year > 0) : ?>
+        <h3>
+            Erfasste Kosten für dieses Objekt und Jahr
+            <small style="font-weight:normal; color:#666;">
+                (<?php echo (int) count($costs ?? []); ?> Positionen)
+            </small>
+        </h3>
+
+        <?php if (!empty($costs)) : ?>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Kategorie</th>
+                        <th>Rechnung / Bezeichnung</th>
+                        <th>Betrag</th>
+                        <th>Rechnungsdatum</th>
+                        <th>Zeitraum</th>
+                        <th>Wiederkehrend</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($costs as $cost) : ?>
+                        <?php $is_editing = !empty($edit_item) && (int) $edit_item->id === (int) $cost->id; ?>
+
+                        <?php if ($is_editing) : ?>
+                            <tr>
+                                <form method="post">
+                                    <?php wp_nonce_field('vm_update_cost'); ?>
+                                    <input type="hidden" name="vm_action" value="update_cost">
+                                    <input type="hidden" name="vm_record_id" value="<?php echo (int) $cost->id; ?>">
+                                    <input type="hidden" name="vm_property_id" value="<?php echo (int) $selected_property_id; ?>">
+
+                                    <td>
+                                        <select name="vm_property_cost_category_id" required style="width:100%;">
+                                            <option value="">Bitte wählen</option>
+                                            <?php foreach ($property_categories as $category) : ?>
+                                                <option value="<?php echo esc_attr($category->id); ?>" <?php selected((int) $cost->property_cost_category_id, (int) $category->id); ?>>
+                                                    <?php echo esc_html($category->name); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="vm_name" value="<?php echo esc_attr($cost->name); ?>" required style="width:100%;">
+                                    </td>
+                                    <td>
+                                        <input type="text" name="vm_betrag" value="<?php echo esc_attr(number_format((float) $cost->betrag, 2, ',', '')); ?>" required style="width:120px;">
+                                    </td>
+                                    <td>
+                                        <input type="date" name="vm_invoice_date" value="<?php echo esc_attr($cost->invoice_date); ?>" required>
+                                    </td>
+                                    <td>
+                                        <input type="date" name="vm_period_start" value="<?php echo esc_attr($cost->period_start); ?>" required style="margin-bottom:4px;"><br>
+                                        <input type="date" name="vm_period_end" value="<?php echo esc_attr($cost->period_end); ?>" required><br>
+                                        <input type="number" name="vm_period_year" value="<?php echo esc_attr((int) $cost->period_year); ?>" required style="width:100px; margin-top:4px;">
+                                    </td>
+                                    <td>
+                                        <?php echo !empty($cost->is_recurring) ? 'Ja' : 'Nein'; ?>
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="button button-primary" aria-label="Speichern">
+                                            <i class="fa-solid fa-save"></i>
+                                        </button>
+                                        <a href="<?php echo esc_url(remove_query_arg('edit_id')); ?>" class="button" aria-label="Abbrechen">
+                                            Abbrechen
+                                        </a>
+                                    </td>
+                                </form>
+                            </tr>
+                        <?php else : ?>
+                            <tr>
+                                <td><?php echo esc_html($cost->category_name ?: '—'); ?></td>
+                                <td><?php echo esc_html($cost->name); ?></td>
+                                <td><?php echo esc_html(number_format((float) $cost->betrag, 2, ',', '.')); ?> €</td>
+                                <td><?php echo esc_html($cost->invoice_date); ?></td>
+                                <td>
+                                    <?php echo esc_html($cost->period_start); ?><br>
+                                    bis <?php echo esc_html($cost->period_end); ?>
+                                </td>
+                                <td><?php echo !empty($cost->is_recurring) ? 'Ja' : 'Nein'; ?></td>
+                                <td>
+                                    <a
+                                        href="<?php echo esc_url(add_query_arg([
+                                            'vm_property_id' => (int) $selected_property_id,
+                                            'vm_year'        => (int) $selected_year,
+                                            'edit_id'        => (int) $cost->id,
+                                        ])); ?>"
+                                        class="button"
+                                        aria-label="Bearbeiten"
+                                    >
+                                        <i class="fa-solid fa-ellipsis"></i>
+                                    </a>
+
+                                    <form method="post" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Diese Kostenposition wirklich löschen?');">
+                                        <?php wp_nonce_field('vm_delete_cost'); ?>
+                                        <input type="hidden" name="vm_action" value="delete_cost">
+                                        <input type="hidden" name="vm_record_id" value="<?php echo (int) $cost->id; ?>">
+                                        <input type="hidden" name="vm_property_id" value="<?php echo (int) $selected_property_id; ?>">
+                                        <input type="hidden" name="vm_year" value="<?php echo (int) $selected_year; ?>">
+
+                                        <button type="submit" class="button button-link-delete" aria-label="Löschen">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else : ?>
+            <p>Für dieses Objekt und Jahr sind noch keine Kostenpositionen erfasst.</p>
+        <?php endif; ?>
+    <?php endif; ?>
 </div>

@@ -67,6 +67,90 @@ class Vermieter_Costs {
         return $count;
     }
 
+    public static function get($id) {
+        global $wpdb;
+
+        $table_costs = $wpdb->prefix . 'vm_costs';
+        $table_properties = $wpdb->prefix . 'vm_properties';
+        $table_property_categories = $wpdb->prefix . 'vm_property_cost_categories';
+        $table_definitions = $wpdb->prefix . 'vm_cost_category_definitions';
+
+        return $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT
+                    c.*,
+                    p.name AS property_name,
+                    pc.allocation_type,
+                    pc.is_recurring,
+                    pc.property_distribution_key_id,
+                    d.name AS category_name
+                 FROM $table_costs c
+                 LEFT JOIN $table_properties p
+                    ON c.property_id = p.id
+                 LEFT JOIN $table_property_categories pc
+                    ON c.property_cost_category_id = pc.id
+                 LEFT JOIN $table_definitions d
+                    ON pc.cost_category_definition_id = d.id
+                 WHERE c.id = %d
+                   AND c.user_id = %d
+                 LIMIT 1",
+                (int) $id,
+                get_current_user_id()
+            )
+        );
+    }
+
+    public static function update($id, $data) {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'vm_costs';
+
+        $updated = $wpdb->update(
+            $table,
+            [
+                'property_id'               => (int) ($data['property_id'] ?? 0),
+                'property_cost_category_id' => (int) ($data['property_cost_category_id'] ?? 0),
+                'name'                      => sanitize_text_field($data['name'] ?? ''),
+                'betrag'                    => (float) ($data['betrag'] ?? 0),
+                'invoice_date'              => sanitize_text_field($data['invoice_date'] ?? ''),
+                'period_start'              => sanitize_text_field($data['period_start'] ?? ''),
+                'period_end'                => sanitize_text_field($data['period_end'] ?? ''),
+                'period_year'               => (int) ($data['period_year'] ?? 0),
+            ],
+            [
+                'id'      => (int) $id,
+                'user_id' => get_current_user_id(),
+            ],
+            ['%d', '%d', '%s', '%f', '%s', '%s', '%s', '%d'],
+            ['%d', '%d']
+        );
+
+        return $updated !== false;
+    }
+
+    public static function delete($id) {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'vm_costs';
+
+        $deleted = $wpdb->delete(
+            $table,
+            [
+                'id'      => (int) $id,
+                'user_id' => get_current_user_id(),
+            ],
+            ['%d', '%d']
+        );
+
+        return $deleted !== false && $deleted > 0;
+    }
+
     public static function get_all_by_user($user_id = 0) {
         global $wpdb;
 
@@ -93,7 +177,7 @@ class Vermieter_Costs {
                  LEFT JOIN $table_definitions d
                     ON pc.cost_category_definition_id = d.id
                  WHERE c.user_id = %d
-                 ORDER BY c.invoice_date DESC, c.id DESC",
+                 ORDER BY d.name ASC, c.name ASC, c.invoice_date ASC, c.id ASC",
                 $user_id
             )
         );
