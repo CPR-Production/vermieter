@@ -363,24 +363,61 @@ class Vermieter_Shortcodes {
         }
 
         $message = '';
+        $edit_id = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : 0;
+        $edit_item = $edit_id ? Vermieter_Cost_Category_Definitions::get($edit_id) : null;
+
+        if ($edit_item && (int) $edit_item->user_id === 0) {
+            $edit_item = null;
+            $edit_id = 0;
+            $message = 'System-Kategoriedefinitionen können nicht bearbeitet werden.';
+        }
 
         if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_cost_category_definition') {
             check_admin_referer('vm_save_cost_category_definition');
 
-            $id = Vermieter_Cost_Category_Definitions::add([
+            $record_id = (int) ($_POST['vm_record_id'] ?? 0);
+
+            $data = [
                 'name'                    => sanitize_text_field(wp_unslash($_POST['vm_name'] ?? '')),
                 'description'             => sanitize_textarea_field(wp_unslash($_POST['vm_description'] ?? '')),
                 'default_allocation_type' => sanitize_text_field(wp_unslash($_POST['vm_default_allocation_type'] ?? 'wohnflaeche')),
                 'default_is_recurring'    => !empty($_POST['vm_default_is_recurring']) ? 1 : 0,
-            ]);
+            ];
 
-            $message = $id ? 'Kategoriedefinition gespeichert.' : 'Kategoriedefinition konnte nicht gespeichert werden.';
+            if ($record_id > 0) {
+                $result = Vermieter_Cost_Category_Definitions::update($record_id, $data);
+                $message = $result
+                    ? 'Kategoriedefinition aktualisiert.'
+                    : 'Kategoriedefinition konnte nicht aktualisiert werden.';
+            } else {
+                $id = Vermieter_Cost_Category_Definitions::add($data);
+                $message = $id
+                    ? 'Kategoriedefinition gespeichert.'
+                    : 'Kategoriedefinition konnte nicht gespeichert werden.';
+            }
+
+            $edit_item = null;
+            $edit_id = 0;
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_cost_category_definition') {
+            check_admin_referer('vm_delete_cost_category_definition');
+
+            $result = Vermieter_Cost_Category_Definitions::delete((int) ($_POST['vm_record_id'] ?? 0));
+            $message = !empty($result['message'])
+                ? $result['message']
+                : 'Kategoriedefinition konnte nicht gelöscht werden.';
+
+            $edit_item = null;
+            $edit_id = 0;
         }
 
         return vm_render_template('form-cost-category-definitions.php', [
             'message'             => $message,
             'definitions'         => Vermieter_Cost_Category_Definitions::get_all_by_user(),
             'apportionment_types' => Vermieter_Apportionment_Types::get_options(),
+            'edit_item'           => $edit_item,
+            'edit_id'             => $edit_id,
         ]);
     }
 
