@@ -7,7 +7,7 @@
         <p><strong><?php echo esc_html($message); ?></strong></p>
     <?php endif; ?>
 
-    <form method="get" style="margin-bottom:20px;">
+    <form method="get" id="vm-costs-filter-form" style="margin-bottom:20px;">
         <input type="hidden" name="vm_year" id="vm_year_filter" value="<?php echo esc_attr($period['year']); ?>">
 
         <p>
@@ -51,7 +51,7 @@
 
             <h3>Positionen</h3>
 
-            <table id="vm-costs-table">
+            <table id="vm-costs-entry-table">
                 <thead>
                     <tr>
                         <th><i class="fa-solid fa-layer-group"></i> Kategorie</th>
@@ -106,12 +106,25 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                const tableBody = document.querySelector('#vm-costs-table tbody');
+                const yearField = document.getElementById('vm_year');
+
+                if (!yearField || !yearField.form) {
+                    return;
+                }
+
+                yearField.addEventListener('change', function () {
+                    yearField.form.submit();
+                });
+            });
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const tableBody = document.querySelector('#vm-costs-entry-table tbody');
                 const addRowButton = document.getElementById('vm-add-row');
                 const yearField = document.getElementById('vm_period_year');
                 const periodStartField = document.getElementById('vm_period_start');
                 const periodEndField = document.getElementById('vm_period_end');
                 const yearFilterField = document.getElementById('vm_year_filter');
+                const filterForm = document.getElementById('vm-costs-filter-form');
 
                 const getInvoiceName = function () {
                     const year = parseInt(yearField.value, 10);
@@ -125,7 +138,7 @@
 
                 const updateAutoNames = function () {
                     const newAutoName = getInvoiceName();
-                    const nameFields = document.querySelectorAll('#vm-costs-table input[name$="[name]"]');
+                    const nameFields = document.querySelectorAll('#vm-costs-entry-table input[name$="[name]"]');
 
                     nameFields.forEach(function (field) {
                         const previousAutoName = field.dataset.autoName || '';
@@ -147,7 +160,7 @@
 
                         periodStartField.value = year + '-01-01';
                         periodEndField.value = year + '-12-31';
-                        
+
                         if (yearFilterField) {
                             yearFilterField.value = year;
                         }
@@ -155,8 +168,28 @@
                         updateAutoNames();
                     };
 
-                    yearField.addEventListener('change', updatePeriodDatesFromYear);
+                    const submitYearFilter = function () {
+                        const year = parseInt(yearField.value, 10);
+
+                        if (!year || year < 1000 || year > 9999) {
+                            return;
+                        }
+
+                        if (yearFilterField) {
+                            yearFilterField.value = year;
+                        }
+
+                        if (filterForm) {
+                            filterForm.submit();
+                        }
+                    };
+
                     yearField.addEventListener('input', updatePeriodDatesFromYear);
+
+                    yearField.addEventListener('change', function () {
+                        updatePeriodDatesFromYear();
+                        submitYearFilter();
+                    });
                 }
 
                 if (!tableBody || !addRowButton) {
@@ -202,6 +235,16 @@
         </script>
     <?php endif; ?>
 
+    <?php
+    $category_options = [];
+    foreach (($property_categories ?? []) as $category) {
+        $category_options[] = [
+            'id'   => (int) $category->id,
+            'name' => (string) $category->name,
+        ];
+    }
+    ?>
+
     <?php if ($selected_property_id > 0 && $selected_year > 0) : ?>
         <h3>
             Erfasste Kosten für dieses Objekt und Jahr
@@ -211,7 +254,7 @@
         </h3>
 
         <?php if (!empty($costs)) : ?>
-            <table>
+            <table id="vm-costs-list-table">
                 <thead>
                     <tr>
                         <th>Kategorie</th>
@@ -273,43 +316,56 @@
                                 </form>
                             </tr>
                         <?php else : ?>
-                            <tr>
+                            <tr
+                                class="vm-cost-row"
+                                data-id="<?php echo (int) $cost->id; ?>"
+                                data-property-id="<?php echo (int) $selected_property_id; ?>"
+                                data-category-id="<?php echo (int) $cost->property_cost_category_id; ?>"
+                                data-category-name="<?php echo esc_attr($cost->category_name ?: ''); ?>"
+                                data-name="<?php echo esc_attr($cost->name); ?>"
+                                data-betrag="<?php echo esc_attr(number_format((float) $cost->betrag, 2, '.', '')); ?>"
+                                data-invoice-date="<?php echo esc_attr($cost->invoice_date); ?>"
+                                data-period-start="<?php echo esc_attr($cost->period_start); ?>"
+                                data-period-end="<?php echo esc_attr($cost->period_end); ?>"
+                                data-period-year="<?php echo esc_attr((int) $cost->period_year); ?>"
+                                data-is-recurring="<?php echo !empty($cost->is_recurring) ? '1' : '0'; ?>"
+                            >
                                 <td><?php echo esc_html($cost->category_name ?: '—'); ?></td>
                                 <td><?php echo esc_html($cost->name); ?></td>
                                 <td><?php echo esc_html(number_format((float) $cost->betrag, 2, ',', '.')); ?> €</td>
-                                <td><?php echo esc_html($cost->invoice_date); ?></td>
+                                <td><?php echo esc_html(vm_format_date($cost->invoice_date)); ?></td>
                                 <td>
-                                    <?php echo esc_html($cost->period_start); ?><br>
-                                    bis <?php echo esc_html($cost->period_end); ?>
+                                    <?php echo esc_html(vm_format_date($cost->period_start)); ?><br>
+                                    bis <?php echo esc_html(vm_format_date($cost->period_end)); ?>
                                 </td>
                                 <td><?php echo !empty($cost->is_recurring) ? 'Ja' : 'Nein'; ?></td>
                                 <td>
-                                    <a
-                                        href="<?php echo esc_url(add_query_arg([
-                                            'vm_property_id' => (int) $selected_property_id,
-                                            'vm_year'        => (int) $selected_year,
-                                            'edit_id'        => (int) $cost->id,
-                                        ])); ?>"
-                                        class="button"
+                                    <button
+                                        type="button"
+                                        class="button vm-inline-edit-cost"
                                         aria-label="Bearbeiten"
                                     >
                                         <i class="fa-solid fa-ellipsis"></i>
-                                    </a>
+                                    </button>
 
-                                    <form method="post" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Diese Kostenposition wirklich löschen?');">
-                                        <?php wp_nonce_field('vm_delete_cost'); ?>
-                                        <input type="hidden" name="vm_action" value="delete_cost">
-                                        <input type="hidden" name="vm_record_id" value="<?php echo (int) $cost->id; ?>">
-                                        <input type="hidden" name="vm_property_id" value="<?php echo (int) $selected_property_id; ?>">
-                                        <input type="hidden" name="vm_year" value="<?php echo (int) $selected_year; ?>">
-
-                                        <button type="submit" class="button button-link-delete" aria-label="Löschen">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
-                                    </form>
+                                    <button
+                                        type="button"
+                                        class="button button-link-delete vm-inline-delete-cost"
+                                        aria-label="Löschen"
+                                    >
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
                                 </td>
                             </tr>
                         <?php endif; ?>
+                            <tr class="vm-cost-edit-row" style="display:none;">
+                                <td colspan="7">
+                                    <div
+                                        class="vm-cost-inline-editor"
+                                        data-categories="<?php echo esc_attr(wp_json_encode($category_options)); ?>"
+                                    ></div>
+                                </td>
+                            </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>

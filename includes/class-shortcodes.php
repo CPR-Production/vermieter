@@ -23,6 +23,92 @@ class Vermieter_Shortcodes {
         add_shortcode('vermieter_tenant_payments', [__CLASS__, 'tenant_payments_shortcode']);
         add_shortcode('vermieter_mietkonto', [__CLASS__, 'mietkonto_shortcode']);
         add_shortcode('vermieter_nebenkostenabrechnung', [__CLASS__, 'nebenkostenabrechnung_shortcode']);
+        add_action('wp_ajax_vm_update_cost_inline', [__CLASS__, 'update_cost_inline_ajax']);
+        add_action('wp_ajax_vm_delete_cost_inline', [__CLASS__, 'delete_cost_inline_ajax']);
+    }
+
+    public static function update_cost_inline_ajax() {
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'Bitte einloggen.'], 403);
+        }
+
+        check_ajax_referer('vm_costs_inline_nonce', 'nonce');
+
+        $record_id = (int) ($_POST['id'] ?? 0);
+
+        if ($record_id <= 0) {
+            wp_send_json_error(['message' => 'Ungültige ID.'], 400);
+        }
+
+        $result = Vermieter_Costs::update($record_id, [
+            'property_id'               => (int) ($_POST['property_id'] ?? 0),
+            'property_cost_category_id' => (int) ($_POST['property_cost_category_id'] ?? 0),
+            'name'                      => sanitize_text_field(wp_unslash($_POST['name'] ?? '')),
+            'betrag'                    => isset($_POST['betrag'])
+                ? (float) str_replace(',', '.', wp_unslash($_POST['betrag']))
+                : 0,
+            'invoice_date'              => sanitize_text_field(wp_unslash($_POST['invoice_date'] ?? '')),
+            'period_start'              => sanitize_text_field(wp_unslash($_POST['period_start'] ?? '')),
+            'period_end'                => sanitize_text_field(wp_unslash($_POST['period_end'] ?? '')),
+            'period_year'               => (int) ($_POST['period_year'] ?? 0),
+        ]);
+
+        if (!$result) {
+            wp_send_json_error(['message' => 'Kostenposition konnte nicht aktualisiert werden.']);
+        }
+
+        $item = Vermieter_Costs::get($record_id);
+
+        if (!$item) {
+            wp_send_json_error(['message' => 'Kostenposition nach dem Speichern nicht gefunden.']);
+        }
+
+        wp_send_json_success([
+            'message' => 'Kostenposition aktualisiert.',
+            'item'    => [
+                'id'                        => (int) $item->id,
+                'property_id'               => (int) $item->property_id,
+                'property_cost_category_id' => (int) $item->property_cost_category_id,
+                'category_name'             => (string) ($item->category_name ?? ''),
+                'name'                      => (string) $item->name,
+                'betrag'                    => (float) $item->betrag,
+                'betrag_formatted'          => vm_format_money((float) $item->betrag),
+                'invoice_date'              => (string) $item->invoice_date,
+                'invoice_date_formatted'    => vm_format_date($item->invoice_date),
+                'period_start'              => (string) $item->period_start,
+                'period_end'                => (string) $item->period_end,
+                'period_start_formatted'    => vm_format_date($item->period_start),
+                'period_end_formatted'      => vm_format_date($item->period_end),
+                'period_year'               => (int) $item->period_year,
+                'is_recurring'              => !empty($item->is_recurring) ? 1 : 0,
+                'is_recurring_label'        => !empty($item->is_recurring) ? 'Ja' : 'Nein',
+            ],
+        ]);
+    }
+
+    public static function delete_cost_inline_ajax() {
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'Bitte einloggen.'], 403);
+        }
+
+        check_ajax_referer('vm_costs_inline_nonce', 'nonce');
+
+        $record_id = (int) ($_POST['id'] ?? 0);
+
+        if ($record_id <= 0) {
+            wp_send_json_error(['message' => 'Ungültige ID.'], 400);
+        }
+
+        $result = Vermieter_Costs::delete($record_id);
+
+        if (!$result) {
+            wp_send_json_error(['message' => 'Kostenposition konnte nicht gelöscht werden.']);
+        }
+
+        wp_send_json_success([
+            'message' => 'Kostenposition gelöscht.',
+            'id'      => $record_id,
+        ]);
     }
 
     public static function nebenkostenabrechnung_shortcode($atts) {
