@@ -106,7 +106,7 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                const yearField = document.getElementById('vm_year');
+                const yearField = document.getElementById('vm_period_GET_year');
 
                 if (!yearField || !yearField.form) {
                     return;
@@ -188,7 +188,7 @@
 
                     yearField.addEventListener('change', function () {
                         updatePeriodDatesFromYear();
-                        submitYearFilter();
+                        //submitYearFilter();
                     });
                 }
 
@@ -248,10 +248,20 @@
     <?php if ($selected_property_id > 0 && $selected_year > 0) : ?>
         <h3>
             Erfasste Kosten für dieses Objekt und Jahr
-            <small style="font-weight:normal; color:#666;">
-                (<?php echo (int) count($costs ?? []); ?> Positionen)
-            </small>
         </h3>
+        <p>
+            <small style="font-weight:normal; color:#666;">
+                <?php echo (int) count($costs ?? []); ?> Positionen
+            </small>
+        </p>
+        <form>
+            <input type="hidden" name="vm_property_id" value="<?php echo esc_attr($selected_property_id); ?>">
+
+            <p>
+                <label for="vm_period_GET_year">Jahr</label><br>
+                <input type="number" name="vm_year" id="vm_period_GET_year" value="<?php echo esc_attr($period['year']); ?>" required>
+            </p>
+        </form>
 
         <?php if (!empty($costs)) : ?>
             <table id="vm-costs-list-table">
