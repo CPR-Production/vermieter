@@ -181,35 +181,96 @@
                                 $sum_total_cost = 0.0;
                                 $sum_share_before_factor = 0.0;
                                 $sum_tenant_share = 0.0;
-                                ?>
-                                <?php foreach ($tenant_statement['cost_items'] as $item) : ?>
-                                    <?php
+                                $cost_items_by_apartment = [];
+
+                                foreach ($tenant_statement['cost_items'] as $item) {
+                                    $apartment_id = (int) ($item['apartment_id'] ?? 0);
+                                    $apartment_name = trim((string) ($item['apartment_name'] ?? ''));
+                                    $apartment_key = $apartment_id > 0 ? 'apartment_' . $apartment_id : 'apartment_' . md5($apartment_name);
+
+                                    if (!isset($cost_items_by_apartment[$apartment_key])) {
+                                        $cost_items_by_apartment[$apartment_key] = [
+                                            'apartment_name' => $apartment_name !== '' ? $apartment_name : 'Ohne Einheit',
+                                            'items' => [],
+                                            'sum_total_cost' => 0.0,
+                                            'sum_share_before_factor' => 0.0,
+                                            'sum_tenant_share' => 0.0,
+                                        ];
+                                    }
+
+                                    $cost_items_by_apartment[$apartment_key]['items'][] = $item;
+                                    $cost_items_by_apartment[$apartment_key]['sum_total_cost'] += (float) ($item['total_cost'] ?? 0);
+                                    $cost_items_by_apartment[$apartment_key]['sum_share_before_factor'] += (float) ($item['share_before_factor'] ?? 0);
+                                    $cost_items_by_apartment[$apartment_key]['sum_tenant_share'] += (float) ($item['tenant_share'] ?? 0);
+
                                     $sum_total_cost += (float) ($item['total_cost'] ?? 0);
                                     $sum_share_before_factor += (float) ($item['share_before_factor'] ?? 0);
                                     $sum_tenant_share += (float) ($item['tenant_share'] ?? 0);
-                                    ?>
-                                    <tr>
-                                        <td><?php echo esc_html($item['cost_name']); ?></td>
-                                        <td><?php echo esc_html($item['apartment_name']); ?></td>
-                                        <td><?php echo esc_html(vm_format_money($item['total_cost'] ?? 0)); ?></td>
-                                        <td><?php echo esc_html(number_format((float)($item['tenant_value'] ?? 0), 2, ',', '.')); ?> / <?php echo esc_html(number_format((float)($item['total_value'] ?? 0), 2, ',', '.')); ?></td>
+                                }
 
-                                        <?php if ($show_time_columns): ?>
-                                            <td><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
+                                uasort($cost_items_by_apartment, function ($a, $b) {
+                                    return mb_strtolower((string) $a['apartment_name']) <=> mb_strtolower((string) $b['apartment_name']);
+                                });
+
+                                foreach ($cost_items_by_apartment as $apartment_group) :
+                                    usort($apartment_group['items'], function ($a, $b) {
+                                        $category_a = mb_strtolower(trim((string) ($a['category_name'] ?? '')));
+                                        $category_b = mb_strtolower(trim((string) ($b['category_name'] ?? '')));
+
+                                        if ($category_a !== $category_b) {
+                                            return $category_a <=> $category_b;
+                                        }
+
+                                        return mb_strtolower(trim((string) ($a['cost_name'] ?? '')))
+                                            <=> mb_strtolower(trim((string) ($b['cost_name'] ?? '')));
+                                    });
+                                ?>
+                                    <tr style="background:#f5f5f5;">
+                                        <th colspan="<?php echo esc_attr($show_time_columns ? 7 : 5); ?>" style="text-align:left;">
+                                            Einheit: <?php echo esc_html($apartment_group['apartment_name']); ?>
+                                        </th>
+                                    </tr>
+
+                                    <?php foreach ($apartment_group['items'] as $item) : ?>
+                                        <tr>
                                             <td>
-                                                <?php
-                                                $occupied_days = (int) ($item['occupied_days'] ?? 0);
-                                                $year_days = (int) ($item['year_days'] ?? 0);
-                                                $tenant_factor = (float) ($item['tenant_factor'] ?? 0);
-
-                                                echo esc_html(
-                                                    $occupied_days . ' / ' . $year_days . ' (' . number_format($tenant_factor, 4, ',', '.') . ')'
-                                                );
-                                                ?>
+                                                <?php echo esc_html($item['cost_name']); ?>
+                                                <?php if (!empty($item['category_name'])) : ?>
+                                                    <br><small><?php echo esc_html($item['category_name']); ?></small>
+                                                <?php endif; ?>
                                             </td>
-                                        <?php endif; ?>
+                                            <td><?php echo esc_html($item['apartment_name']); ?></td>
+                                            <td><?php echo esc_html(vm_format_money($item['total_cost'] ?? 0)); ?></td>
+                                            <td><?php echo esc_html(number_format((float)($item['tenant_value'] ?? 0), 2, ',', '.')); ?> / <?php echo esc_html(number_format((float)($item['total_value'] ?? 0), 2, ',', '.')); ?></td>
 
-                                        <td><?php echo esc_html(vm_format_money($item['tenant_share'] ?? 0)); ?></td>
+                                            <?php if ($show_time_columns): ?>
+                                                <td><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
+                                                <td>
+                                                    <?php
+                                                    $occupied_days = (int) ($item['occupied_days'] ?? 0);
+                                                    $year_days = (int) ($item['year_days'] ?? 0);
+                                                    $tenant_factor = (float) ($item['tenant_factor'] ?? 0);
+
+                                                    echo esc_html(
+                                                        $occupied_days . ' / ' . $year_days . ' (' . number_format($tenant_factor, 4, ',', '.') . ')'
+                                                    );
+                                                    ?>
+                                                </td>
+                                            <?php endif; ?>
+
+                                            <td><?php echo esc_html(vm_format_money($item['tenant_share'] ?? 0)); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <tr style="background:#fafafa;">
+                                        <th colspan="2" style="text-align:right;">Zwischensumme <?php echo esc_html($apartment_group['apartment_name']); ?></th>
+                                        <th><?php echo esc_html(vm_format_money($apartment_group['sum_total_cost'])); ?></th>
+                                        <th></th>
+                                        <?php if ($show_time_columns): ?>
+                                            <th><?php echo esc_html(vm_format_money($apartment_group['sum_share_before_factor'])); ?></th>
+                                            <th></th>
+                                        <?php endif; ?>
+                                        <th><?php echo esc_html(vm_format_money($apartment_group['sum_tenant_share'])); ?></th>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
