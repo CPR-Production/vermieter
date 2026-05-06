@@ -23,6 +23,7 @@ class Vermieter_Shortcodes {
         add_shortcode('vermieter_tenant_payments', [__CLASS__, 'tenant_payments_shortcode']);
         add_shortcode('vermieter_mietkonto', [__CLASS__, 'mietkonto_shortcode']);
         add_shortcode('vermieter_nebenkostenabrechnung', [__CLASS__, 'nebenkostenabrechnung_shortcode']);
+        add_shortcode('vermieter_heating_statements', [__CLASS__, 'heating_statements_shortcode']);
         add_action('wp_ajax_vm_update_cost_inline', [__CLASS__, 'update_cost_inline_ajax']);
         add_action('wp_ajax_vm_delete_cost_inline', [__CLASS__, 'delete_cost_inline_ajax']);
     }
@@ -108,6 +109,78 @@ class Vermieter_Shortcodes {
         wp_send_json_success([
             'message' => 'Kostenposition gelöscht.',
             'id'      => $record_id,
+        ]);
+    }
+
+
+    public static function heating_statements_shortcode($atts) {
+        if (!is_user_logged_in()) {
+            return 'Bitte einloggen.';
+        }
+
+        $atts = shortcode_atts([
+            'property_id' => 0,
+            'year'        => 0,
+        ], $atts, 'vermieter_heating_statements');
+
+        $message = '';
+        $properties = Vermieter_Properties::get_all();
+        $selected_property_id = (int) ($atts['property_id'] ?: ($_REQUEST['vm_property_id'] ?? 0));
+        $selected_year = (int) ($atts['year'] ?: ($_REQUEST['vm_year'] ?? current_time('Y')));
+
+        if ($selected_property_id <= 0 && !empty($properties)) {
+            $selected_property_id = (int) $properties[0]->id;
+        }
+
+        if ($selected_year <= 0) {
+            $selected_year = (int) current_time('Y');
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_heating_statement') {
+            check_admin_referer('vm_save_heating_statement');
+
+            $selected_property_id = (int) ($_POST['vm_property_id'] ?? 0);
+            $selected_year = (int) ($_POST['vm_billing_year'] ?? current_time('Y'));
+
+            $result = Vermieter_Heating_Statements::save([
+                'property_id' => $selected_property_id,
+                'apartment_id' => (int) ($_POST['vm_apartment_id'] ?? 0),
+                'provider_name' => sanitize_text_field(wp_unslash($_POST['vm_provider_name'] ?? 'Brunata Metrona')),
+                'billing_year' => $selected_year,
+                'period_start' => sanitize_text_field(wp_unslash($_POST['vm_period_start'] ?? '')),
+                'period_end' => sanitize_text_field(wp_unslash($_POST['vm_period_end'] ?? '')),
+                'statement_date' => sanitize_text_field(wp_unslash($_POST['vm_statement_date'] ?? '')),
+                'notes' => sanitize_textarea_field(wp_unslash($_POST['vm_notes'] ?? '')),
+            ], $_POST['vm_rows'] ?? []);
+
+            $message = $result
+                ? 'Heizkostenabrechnung gespeichert. ' . (int) $result['created_costs'] . ' Position(en) wurden für die Nebenkostenabrechnung erzeugt.'
+                : 'Heizkostenabrechnung konnte nicht gespeichert werden. Bitte Objekt, Einheit, Zeitraum und mindestens eine Kostenposition prüfen.';
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_heating_statement') {
+            check_admin_referer('vm_delete_heating_statement');
+            $deleted = Vermieter_Heating_Statements::delete((int) ($_POST['vm_statement_id'] ?? 0));
+            $message = $deleted ? 'Heizkostenabrechnung und erzeugte Kostenpositionen gelöscht.' : 'Löschen fehlgeschlagen.';
+        }
+
+        $apartments = $selected_property_id ? Vermieter_Apartments::get_by_property($selected_property_id) : [];
+        $property_categories = $selected_property_id ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id) : [];
+        // Übersicht bewusst nur nach Objekt filtern, nicht nach Einheit und nicht nach Jahr.
+        // Sonst können bereits erfasste Heizkosten unsichtbar werden und versehentlich doppelt erfasst werden.
+        $statements = Vermieter_Heating_Statements::get_all_by_user($selected_property_id, 0);
+        $usage_rows = $selected_property_id ? Vermieter_Heating_Statements::get_usage_rows_by_property_and_year($selected_property_id, $selected_year) : [];
+
+        return vm_render_template('form-heating-statements.php', [
+            'message' => $message,
+            'properties' => $properties,
+            'apartments' => $apartments,
+            'property_categories' => $property_categories,
+            'selected_property_id' => $selected_property_id,
+            'selected_year' => $selected_year,
+            'default_rows' => Vermieter_Heating_Statements::get_default_rows(),
+            'usage_rows' => $usage_rows,
+            'statements' => $statements,
         ]);
     }
 
@@ -682,18 +755,26 @@ class Vermieter_Shortcodes {
                 ? Vermieter_Property_Cost_Categories::get_by_property($selected_property_id)
                 : [];
 
+            $base_cost_data = [
+                'property_id'  => $selected_property_id,
+                'period_year'  => $selected_year,
+                'invoice_date' => sanitize_text_field(wp_unslash($_POST['vm_invoice_date'] ?? '')),
+                'period_start' => $period['start'],
+                'period_end'   => $period['end'],
+            ];
+
             $count = Vermieter_Costs::add_multiple(
-                [
-                    'property_id'  => $selected_property_id,
-                    'period_year'  => $selected_year,
-                    'invoice_date' => sanitize_text_field(wp_unslash($_POST['vm_invoice_date'] ?? '')),
-                    'period_start' => $period['start'],
-                    'period_end'   => $period['end'],
-                ],
+                $base_cost_data,
                 $_POST['vm_rows'] ?? []
             );
 
-            $message = $count ? $count . ' Position(en) gespeichert.' : 'Keine Positionen gespeichert.';
+            $brunata_count = Vermieter_Costs::add_brunata_split_rows(
+                $base_cost_data,
+                $_POST['vm_brunata_rows'] ?? []
+            );
+
+            $total_count = $count + $brunata_count;
+            $message = $total_count ? $total_count . ' Position(en) gespeichert.' : 'Keine Positionen gespeichert.';
             $edit_item = null;
             $edit_id = 0;
         }
@@ -769,6 +850,7 @@ class Vermieter_Shortcodes {
             'costs'                => $costs,
             'edit_item'            => $edit_item,
             'edit_id'              => $edit_id,
+            'brunata_entry_rows'    => ($selected_property_id > 0 && $selected_year > 0) ? Vermieter_Costs::get_brunata_entry_rows($selected_property_id, $selected_year, $property_categories) : [],
         ]);
     }
 
@@ -1189,6 +1271,7 @@ class Vermieter_Shortcodes {
             'costs'                => $costs,
             'edit_item'            => $edit_item,
             'edit_id'              => $edit_id,
+            'brunata_entry_rows'    => ($selected_property_id > 0 && $selected_year > 0) ? Vermieter_Costs::get_brunata_entry_rows($selected_property_id, $selected_year, $property_categories) : [],
         ]);
     }
 

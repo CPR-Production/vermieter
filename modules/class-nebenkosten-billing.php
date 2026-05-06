@@ -15,6 +15,7 @@ class Vermieter_Nebenkosten_Billing
 
         $costs = Vermieter_Costs::get_by_property_and_year($property_id, $year);
         $apartments = Vermieter_Apartments::get_by_property($property_id);
+        $brunata_totals_by_category = self::get_brunata_totals_by_category($costs);
 
         if (empty($apartments)) {
             return [];
@@ -31,11 +32,26 @@ class Vermieter_Nebenkosten_Billing
 
             $eligible_apartments = self::get_eligible_apartments($apartments, $property_cost_category);
 
+            if (!empty($cost->target_apartment_id)) {
+                $target_apartment_id = (int) $cost->target_apartment_id;
+                $eligible_apartments = array_values(array_filter($eligible_apartments, function ($apartment) use ($target_apartment_id) {
+                    return (int) $apartment->id === $target_apartment_id;
+                }));
+            }
+
             if (empty($eligible_apartments)) {
                 continue;
             }
 
-            $shares = self::distribute_cost_to_apartments($cost, $property_cost_category, $eligible_apartments);
+            // Normale Nebenkosten werden wie bisher nach dem hinterlegten Schlüssel verteilt.
+            // Heizkosten-/Sonderpositionen aus der Heizkostenmaske haben dagegen bereits den Anteil
+            // der konkreten Einheit als Betrag. Sobald target_apartment_id gesetzt ist, darf dieser
+            // Betrag nicht erneut nach Fläche/Schlüssel heruntergerechnet werden.
+            if (!empty($cost->target_apartment_id)) {
+                $shares = [(int) $cost->target_apartment_id => round((float) $cost->betrag, 2)];
+            } else {
+                $shares = self::distribute_cost_to_apartments($cost, $property_cost_category, $eligible_apartments);
+            }
 
             foreach ($shares as $apartment_id => $share_amount) {
                 if ($share_amount <= 0) {
@@ -45,10 +61,27 @@ class Vermieter_Nebenkosten_Billing
                 $apartment_tenants = Vermieter_Apartment_Tenants::get_by_apartment($apartment_id);
 
                 foreach ($apartment_tenants as $apartment_tenant) {
-                    $time_data = self::get_tenant_time_data($apartment_tenant, $year);
-                    $tenant_factor = (float) $time_data['factor'];
+                    $is_manual_tenant_amount = (($cost->calculation_mode ?? '') === 'manual_tenant_amount');
+
+                    // Brunata-/Heizkostenpositionen aus Zwischenablesungen sind bereits fertige
+                    // Nutzungsbeträge pro Mietverhältnis. Sie dürfen weder auf andere Mieter derselben
+                    // Wohnung verteilt noch nochmals zeitanteilig gekürzt werden.
+                    if ($is_manual_tenant_amount && (int) ($cost->apartment_tenant_id ?? 0) !== (int) $apartment_tenant->id) {
+                        continue;
+                    }
+
+                    // Die Kostenposition wird gegen ihren eigenen Abrechnungszeitraum geprüft.
+                    // no_time_factor bedeutet nur: nicht zusätzlich zeitanteilig kürzen.
+                    // Mieter ohne Überschneidung mit Jahr/Zeitraum dürfen trotzdem nie abgerechnet werden.
+                    $time_data = self::get_tenant_cost_period_time_data($apartment_tenant, $cost, $year);
                     $occupied_days = (int) $time_data['occupied_days'];
                     $year_days = (int) $time_data['year_days'];
+
+                    if ($occupied_days <= 0) {
+                        continue;
+                    }
+
+                    $tenant_factor = ($is_manual_tenant_amount || !empty($cost->no_time_factor)) ? 1.0 : (float) $time_data['factor'];
 
                     if ($tenant_factor <= 0) {
                         continue;
@@ -65,6 +98,11 @@ class Vermieter_Nebenkosten_Billing
                     $total_value = 0.0;
 
                     switch ($property_cost_category->allocation_type) {
+                        case 'brunata_statement':
+                            $tenant_value = round((float) $tenant_share, 2);
+                            $total_value = round((float) ($brunata_totals_by_category[(int) $cost->property_cost_category_id] ?? $cost->betrag), 2);
+                            break;
+
                         case 'personen':
                             foreach ($eligible_apartments as $apartment) {
                                 if ((int) $apartment->id === (int) $apartment_id) {
@@ -110,31 +148,20 @@ class Vermieter_Nebenkosten_Billing
                             break;
                     }
 
-                    error_log(
-                        'TIME DEBUG | tenant_id=' . $apartment_tenant->id .
-                        ' | move_in=' . $apartment_tenant->move_in_date .
-                        ' | move_out=' . $apartment_tenant->move_out_date .
-                        ' | occupied_days=' . $occupied_days .
-                        ' | year_days=' . $year_days .
-                        ' | calculated_factor=' . ($occupied_days / $year_days) .
-                        ' | tenant_factor=' . $tenant_factor
-                    );
 
                     $category_name = trim((string) ($property_cost_category->name ?? ''));
                     $display_cost_name = trim((string) ($cost->name ?? ''));
-
-                    if ($display_cost_name !== '' && $category_name !== '' && stripos($display_cost_name, $category_name) === false) {
-                        $display_cost_name .= ' - ' . $category_name;
-                    }
 
                     $tenant_statements[$statement_key]['cost_items'][] = [
                         'cost_id'               => (int) $cost->id,
                         'cost_name'             => $display_cost_name,
                         'category_name'         => $category_name,
                         'allocation_type'       => $property_cost_category->allocation_type ?? '',
+                        'allocation_display'    => (($property_cost_category->allocation_type ?? '') === 'brunata_statement') ? 'Lt. Abrechnung Brunata' : '',
+                        'is_brunata_statement'  => (($property_cost_category->allocation_type ?? '') === 'brunata_statement'),
                         'apartment_id'          => (int) $apartment_id,
                         'apartment_name'        => self::find_apartment_name($eligible_apartments, $apartment_id),
-                        'total_cost'            => round((float) $cost->betrag, 2),
+                        'total_cost'            => (($property_cost_category->allocation_type ?? '') === 'brunata_statement') ? round((float) ($brunata_totals_by_category[(int) $cost->property_cost_category_id] ?? $cost->betrag), 2) : round((float) $cost->betrag, 2),
                         'tenant_value'          => round((float) $tenant_value, 2),
                         'total_value'           => round((float) $total_value, 2),
                         'share_before_factor'   => round((float) $share_amount, 2),
@@ -163,6 +190,34 @@ class Vermieter_Nebenkosten_Billing
         }
 
         return array_values($tenant_statements);
+    }
+
+    protected static function get_brunata_totals_by_category($costs)
+    {
+        $totals = [];
+
+        foreach ($costs as $cost) {
+            if (($cost->source_type ?? '') !== 'brunata_statement' && ($cost->calculation_mode ?? '') !== 'manual_tenant_amount') {
+                continue;
+            }
+
+            $category_id = (int) ($cost->property_cost_category_id ?? 0);
+            if ($category_id <= 0) {
+                continue;
+            }
+
+            if (!isset($totals[$category_id])) {
+                $totals[$category_id] = 0.0;
+            }
+
+            $totals[$category_id] += (float) ($cost->betrag ?? 0);
+        }
+
+        foreach ($totals as $category_id => $amount) {
+            $totals[$category_id] = round((float) $amount, 2);
+        }
+
+        return $totals;
     }
 
     public static function distribute_cost_to_apartments($cost, $property_cost_category, $eligible_apartments){
@@ -422,6 +477,66 @@ class Vermieter_Nebenkosten_Billing
         ];
     }
 
+
+    protected static function get_tenant_cost_period_time_data($apartment_tenant, $cost, $year)
+    {
+        $year_start = $year . '-01-01';
+        $year_end = $year . '-12-31';
+
+        $period_start = !empty($cost->period_start) ? (string) $cost->period_start : $year_start;
+        $period_end = !empty($cost->period_end) ? (string) $cost->period_end : $year_end;
+
+        // Sicherheitsnetz: Abgerechnet wird nur innerhalb des ausgewählten Abrechnungsjahres.
+        $period_start = max($year_start, $period_start);
+        $period_end = min($year_end, $period_end);
+
+        $period_days = self::get_inclusive_date_diff_days($period_start, $period_end);
+
+        if ($period_days <= 0) {
+            return [
+                'occupied_days' => 0,
+                'year_days' => self::is_leap_year($year) ? 366 : 365,
+                'factor' => 0.0,
+            ];
+        }
+
+        $move_in = !empty($apartment_tenant->move_in_date) ? (string) $apartment_tenant->move_in_date : $period_start;
+        $move_out = !empty($apartment_tenant->move_out_date) ? (string) $apartment_tenant->move_out_date : $period_end;
+
+        $occupancy_start = max($period_start, $move_in);
+        $occupancy_end = min($period_end, $move_out);
+        $occupied_days = self::get_inclusive_date_diff_days($occupancy_start, $occupancy_end);
+
+        if ($occupied_days <= 0) {
+            return [
+                'occupied_days' => 0,
+                'year_days' => $period_days,
+                'factor' => 0.0,
+            ];
+        }
+
+        return [
+            'occupied_days' => $occupied_days,
+            'year_days' => $period_days,
+            'factor' => $occupied_days / $period_days,
+        ];
+    }
+
+    protected static function get_inclusive_date_diff_days($start_date, $end_date)
+    {
+        if (empty($start_date) || empty($end_date) || $end_date < $start_date) {
+            return 0;
+        }
+
+        try {
+            $start = new DateTime($start_date);
+            $end = new DateTime($end_date);
+            return (int) $start->diff($end)->days + 1;
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
     protected static function create_empty_statement($apartment_tenant, $property_id, $year)
     {
         return [
@@ -643,6 +758,13 @@ class Vermieter_Nebenkosten_Billing
             $category_a = mb_strtolower(trim((string) ($a['category_name'] ?? '')));
             $category_b = mb_strtolower(trim((string) ($b['category_name'] ?? '')));
 
+            $a_is_brunata = !empty($a['is_brunata_statement']) || (($a['allocation_type'] ?? '') === 'brunata_statement');
+            $b_is_brunata = !empty($b['is_brunata_statement']) || (($b['allocation_type'] ?? '') === 'brunata_statement');
+
+            if ($a_is_brunata !== $b_is_brunata) {
+                return $a_is_brunata ? 1 : -1;
+            }
+
             if ($category_a !== $category_b) {
                 return $category_a <=> $category_b;
             }
@@ -680,6 +802,8 @@ class Vermieter_Nebenkosten_Billing
                     'cost_name'           => $item['cost_name'] ?? '',
                     'category_name'       => $item['category_name'] ?? '',
                     'allocation_type'     => $item['allocation_type'] ?? '',
+                    'allocation_display'  => $item['allocation_display'] ?? '',
+                    'is_brunata_statement'=> !empty($item['is_brunata_statement']),
                     'apartment_id'        => $apartment_id,
                     'apartment_name'      => $item['apartment_name'] ?? '',
                     'total_cost'          => round((float) ($item['total_cost'] ?? 0), 2),

@@ -62,6 +62,7 @@
                 <tbody>
                     <?php if (!empty($property_categories)) : ?>
                         <?php foreach ($property_categories as $index => $category) : ?>
+                            <?php if (($category->allocation_type ?? '') === 'brunata_statement') { continue; } ?>
                             <tr>
                                 <td>
                                     <?php echo esc_html($category->name); ?>
@@ -96,6 +97,53 @@
             <p>
                 <button type="button" id="vm-add-row">+ Zeile hinzufügen</button>
             </p>
+
+            <?php if (!empty($brunata_entry_rows)) : ?>
+                <h3>Heizkosten laut Brunata</h3>
+                <p><small>Diese Positionen werden als Nebenkosten mit dem Schlüssel „Lt. Abrechnung Brunata“ gespeichert. Es werden nur Wohnungen angezeigt; Stellplätze, Garagen und Keller bleiben außen vor. Bei Mieterwechsel trägst du Gesamtbetrag und Teilbeträge ein – sobald genau ein Feld leer ist, berechnet JavaScript den fehlenden Wert automatisch.</small></p>
+
+                <table class="widefat striped vm-table" id="vm-brunata-entry-table">
+                    <thead>
+                        <tr>
+                            <th>Kategorie</th>
+                            <th>Wohnung</th>
+                            <th>Gesamt</th>
+                            <th>Nutzung / Mieter</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($brunata_entry_rows as $b_index => $b_row) : ?>
+                            <tr class="vm-brunata-group">
+                                <td>
+                                    <?php echo esc_html($b_row['category_name']); ?>
+                                    <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][property_cost_category_id]" value="<?php echo esc_attr($b_row['property_cost_category_id']); ?>">
+                                    <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][category_name]" value="<?php echo esc_attr($b_row['category_name']); ?>">
+                                </td>
+                                <td>
+                                    <?php echo esc_html($b_row['apartment_name']); ?>
+                                    <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][apartment_id]" value="<?php echo esc_attr($b_row['apartment_id']); ?>">
+                                </td>
+                                <td>
+                                    <input type="text" class="vm-brunata-total" placeholder="0,00" style="width:110px;">
+                                </td>
+                                <td>
+                                    <?php foreach ($b_row['usage'] as $u_index => $usage) : ?>
+                                        <div style="margin-bottom:8px;">
+                                            <strong><?php echo esc_html($usage['label']); ?></strong><br>
+                                            <small><?php echo esc_html(vm_format_date($usage['start_date'])); ?> bis <?php echo esc_html(vm_format_date($usage['end_date'])); ?> · <?php echo (int) $usage['days']; ?> Tage</small><br>
+                                            <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][usage][<?php echo esc_attr($u_index); ?>][apartment_tenant_id]" value="<?php echo esc_attr($usage['apartment_tenant_id']); ?>">
+                                            <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][usage][<?php echo esc_attr($u_index); ?>][label]" value="<?php echo esc_attr($usage['label']); ?>">
+                                            <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][usage][<?php echo esc_attr($u_index); ?>][start_date]" value="<?php echo esc_attr($usage['start_date']); ?>">
+                                            <input type="hidden" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][usage][<?php echo esc_attr($u_index); ?>][end_date]" value="<?php echo esc_attr($usage['end_date']); ?>">
+                                            <input type="text" class="vm-brunata-part" name="vm_brunata_rows[<?php echo esc_attr($b_index); ?>][usage][<?php echo esc_attr($u_index); ?>][amount]" placeholder="0,00" style="width:110px;">
+                                        </div>
+                                    <?php endforeach; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
 
             <p>
                 <button type="submit" class="vm-btn-primary">
@@ -188,9 +236,79 @@
 
                     yearField.addEventListener('change', function () {
                         updatePeriodDatesFromYear();
-                        //submitYearFilter();
+                        submitYearFilter();
                     });
                 }
+
+
+                const toNumber = function (value) {
+                    if (typeof value !== 'string') {
+                        value = String(value || '');
+                    }
+                    value = value.trim().replace(/\./g, '').replace(',', '.');
+                    const number = parseFloat(value);
+                    return isNaN(number) ? 0 : number;
+                };
+
+                const formatMoneyInput = function (number) {
+                    return (Math.round(number * 100) / 100).toFixed(2).replace('.', ',');
+                };
+
+                document.querySelectorAll('.vm-brunata-group').forEach(function (group) {
+                    const totalField = group.querySelector('.vm-brunata-total');
+                    const partFields = Array.from(group.querySelectorAll('.vm-brunata-part'));
+                    const allFields = [totalField].concat(partFields).filter(Boolean);
+
+                    const recalc = function (changedField) {
+                        const emptyFields = allFields.filter(function (field) {
+                            return field.value.trim() === '';
+                        });
+
+                        if (emptyFields.length !== 1) {
+                            return;
+                        }
+
+                        const emptyField = emptyFields[0];
+
+                        if (emptyField === totalField) {
+                            let sum = 0;
+                            partFields.forEach(function (field) {
+                                sum += toNumber(field.value);
+                            });
+                            emptyField.value = formatMoneyInput(sum);
+                            return;
+                        }
+
+                        const total = toNumber(totalField.value);
+                        if (total <= 0) {
+                            return;
+                        }
+
+                        let used = 0;
+                        partFields.forEach(function (field) {
+                            if (field !== emptyField) {
+                                used += toNumber(field.value);
+                            }
+                        });
+
+                        const rest = total - used;
+                        if (rest >= 0) {
+                            emptyField.value = formatMoneyInput(rest);
+                        }
+                    };
+
+                    allFields.forEach(function (field) {
+                        field.addEventListener('input', function () {
+                            recalc(field);
+                        });
+
+                        field.addEventListener('blur', function () {
+                            if (field.value.trim() !== '') {
+                                field.value = formatMoneyInput(toNumber(field.value));
+                            }
+                        });
+                    });
+                });
 
                 if (!tableBody || !addRowButton) {
                     return;
@@ -201,6 +319,7 @@
                 const categoryOptions = `<?php
                     $options = '<option value="">Bitte wählen</option>';
                     foreach ($property_categories as $category) {
+                        if (($category->allocation_type ?? '') === 'brunata_statement') { continue; }
                         $options .= '<option value="' . esc_attr($category->id) . '">' . esc_html($category->name) . '</option>';
                     }
                     echo $options;

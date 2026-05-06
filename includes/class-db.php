@@ -24,6 +24,8 @@ class Vermieter_DB {
         $table_tenancy_rent_terms           = $wpdb->prefix . 'vm_tenancy_rent_terms';
         $table_tenancy_advance_terms        = $wpdb->prefix . 'vm_tenancy_advance_terms';
         $table_tenant_payments              = $wpdb->prefix . 'vm_tenant_payments';
+        $table_heating_statements           = $wpdb->prefix . 'vm_heating_statements';
+        $table_heating_statement_items      = $wpdb->prefix . 'vm_heating_statement_items';
 
         $sql_tenancy_rent_terms = "CREATE TABLE $table_tenancy_rent_terms (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -50,6 +52,60 @@ class Vermieter_DB {
             KEY user_id (user_id),
             KEY apartment_tenant_id (apartment_tenant_id),
             KEY valid_from (valid_from)
+        ) $charset_collate;";
+
+
+        $sql_heating_statements = "CREATE TABLE $table_heating_statements (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            property_id BIGINT UNSIGNED NOT NULL,
+            apartment_id BIGINT UNSIGNED NOT NULL,
+            provider_name VARCHAR(190) NOT NULL DEFAULT 'Brunata Metrona',
+            billing_year INT NOT NULL,
+            period_start DATE NOT NULL,
+            period_end DATE NOT NULL,
+            statement_date DATE NULL,
+            total_building_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            own_unit_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            notes TEXT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NULL,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY property_id (property_id),
+            KEY apartment_id (apartment_id),
+            KEY billing_year (billing_year)
+        ) $charset_collate;";
+
+        $sql_heating_statement_items = "CREATE TABLE $table_heating_statement_items (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            statement_id BIGINT UNSIGNED NOT NULL,
+            cost_id BIGINT UNSIGNED NULL,
+            apartment_tenant_id BIGINT UNSIGNED NULL,
+            cost_type VARCHAR(50) NOT NULL,
+            split_type VARCHAR(50) NOT NULL,
+            label VARCHAR(190) NOT NULL,
+            property_cost_category_id BIGINT UNSIGNED NOT NULL,
+            amount_building_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            amount_own_unit DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            consumption_building_total DECIMAL(14,4) NOT NULL DEFAULT 0.0000,
+            consumption_own_unit DECIMAL(14,4) NOT NULL DEFAULT 0.0000,
+            consumption_unit VARCHAR(50) NULL,
+            distribution_key VARCHAR(100) NULL,
+            base_value_building DECIMAL(14,4) NOT NULL DEFAULT 0.0000,
+            base_value_own_unit DECIMAL(14,4) NOT NULL DEFAULT 0.0000,
+            price_per_unit DECIMAL(14,6) NOT NULL DEFAULT 0.000000,
+            already_period_related TINYINT(1) NOT NULL DEFAULT 0,
+            is_billable TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY statement_id (statement_id),
+            KEY cost_id (cost_id),
+            KEY apartment_tenant_id (apartment_tenant_id),
+            KEY cost_type (cost_type),
+            KEY split_type (split_type)
         ) $charset_collate;";
 
         $sql_tenant_payments = "CREATE TABLE $table_tenant_payments (
@@ -146,12 +202,22 @@ class Vermieter_DB {
             period_start DATE NOT NULL,
             period_end DATE NOT NULL,
             period_year INT NOT NULL,
+            target_apartment_id BIGINT UNSIGNED NULL,
+            apartment_tenant_id BIGINT UNSIGNED NULL,
+            calculation_mode VARCHAR(50) NOT NULL DEFAULT 'allocation',
+            source_type VARCHAR(50) NULL,
+            source_id BIGINT UNSIGNED NULL,
+            no_time_factor TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY user_id (user_id),
             KEY property_id (property_id),
             KEY property_cost_category_id (property_cost_category_id),
-            KEY period_year (period_year)
+            KEY period_year (period_year),
+            KEY target_apartment_id (target_apartment_id),
+            KEY apartment_tenant_id (apartment_tenant_id),
+            KEY calculation_mode (calculation_mode),
+            KEY source_type_source_id (source_type, source_id)
         ) $charset_collate;";
 
         $sql_distribution_key_definitions = "CREATE TABLE $table_distribution_key_definitions (
@@ -251,6 +317,8 @@ class Vermieter_DB {
         dbDelta($sql_tenancy_rent_terms);
         dbDelta($sql_tenancy_advance_terms);
         dbDelta($sql_tenant_payments);
+        dbDelta($sql_heating_statements);
+        dbDelta($sql_heating_statement_items);
 
         self::seed_apportionment_types();
         self::install_default_distribution_key_definitions();
@@ -273,6 +341,7 @@ class Vermieter_DB {
             ['name' => 'Sonstige Wartungen', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 0],
             ['name' => 'Stromkosten und Wasser', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
             ['name' => 'Versicherungen', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
+            ['name' => 'Heizkosten', 'description' => 'Heizkosten laut Brunata-/Messdienstabrechnung', 'default_allocation_type' => 'brunata_statement', 'default_is_recurring' => 1],
             ['name' => 'Hausreinigung', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
             ['name' => 'Allgemeinstrom', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
         ];
@@ -322,6 +391,7 @@ class Vermieter_DB {
             ['name' => 'Wohnfläche', 'key_name' => 'wohnflaeche', 'description' => 'Verteilung nach Quadratmetern'],
             ['name' => 'Personen', 'key_name' => 'personen', 'description' => 'Verteilung nach Personenzahl'],
             ['name' => 'Verteilerschlüssel', 'key_name' => 'distribution_key', 'description' => 'Verteilung über hinterlegte Schlüsselwerte je Wohnung'],
+            ['name' => 'Lt. Abrechnung Brunata', 'key_name' => 'brunata_statement', 'description' => 'Fertige Brunata-/Messdienst-Abrechnungsbeträge je Nutzungszeitraum; keine weitere Verteilung und kein Zeitfaktor'],
         ];
 
         foreach ($defaults as $row) {
