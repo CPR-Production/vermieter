@@ -140,18 +140,22 @@ button:disabled {
     text-align: left;
 }
 
-.vm-summary-table th:last-child,
-.vm-summary-table td:last-child {
+.vm-summary-table td:last-child,
+.vm-summary-table th:last-child {
     text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 .vm-subtotal {
     background: #f5f5f5;
+    border-top: 1px solid #ccc;
 }
 
 .vm-total {
-    font-size: 1.15em;
+    font-size: 1.2em;
     border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
 }
 
 /* Variante FARBE */
@@ -161,6 +165,15 @@ button:disabled {
 
 .vm-debit {
     background: #fdeaea;
+}
+.vm-credit td:last-child {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.vm-debit td:last-child {
+    color: #c62828;
+    font-weight: bold;
 }
 
 /* Variante SCHRAFFIERT (optional statt Farbe) */
@@ -186,4 +199,53 @@ button:disabled {
     text-align: center;
     font-size: 0.9em;
     color: #666;
+}
+/* PDF-/Druck-Ausgabe Nebenkostenabrechnung */
+.vm-export-controls button {
+    cursor: pointer;
+}
+
+.vm-export-controls button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.vm-tenant-statement {
+    background: #fff;
+}
+
+.vm-pdf-page-break {
+    page-break-after: always;
+    break-after: page;
+}
+
+@media print {
+    .vm-export-controls,
+    .vm-screen-only,
+    .vm-wrap > form {
+        display: none !important;
+    }
+
+    .vm-summary-table {
+        font-size: 12px;
+    }
+
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    .vm-tenant-statement {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .vm-pdf-page-break {
+        page-break-after: always;
+        break-after: page;
+    }
 }

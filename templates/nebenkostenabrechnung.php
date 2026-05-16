@@ -1,8 +1,13 @@
 <?php if (!defined('ABSPATH')) exit; ?>
+<?php
+$vm_pdf_mode = !empty($vm_pdf_mode);
+$vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
+?>
 
 <div class="vm-wrap">
     <h2>Nebenkostenabrechnung</h2>
 
+    <?php if (!$vm_pdf_mode) : ?>
     <form method="get" style="margin-bottom:20px;">
         <p>
             <label for="vm_property_id">Objekt</label><br>
@@ -32,10 +37,26 @@
             <button type="submit">Abrechnung anzeigen</button>
         </p>
     </form>
+    <?php endif; ?>
 
     <?php if (empty($statement) || empty($statement['property'])) : ?>
         <p>Keine Abrechnungsdaten vorhanden.</p>
         <?php return; ?>
+    <?php endif; ?>
+
+    <?php if (!$vm_pdf_mode) : ?>
+        <div class="vm-export-controls" style="margin:0 0 20px; padding:12px; border:1px solid #ddd; background:#fafafa;">
+            <button type="button"
+                    data-vm-pdf-export="1"
+                    data-property-id="<?php echo esc_attr($selected_property_id); ?>"
+                    data-year="<?php echo esc_attr($selected_year); ?>"
+                    data-tenant-index="all">
+                <i class="fa-solid fa-file-pdf"></i> Alle Abrechnungen als PDF drucken
+            </button>
+            <p style="margin:8px 0 0; font-size:12px; color:#666;">
+                Bei Mieterwechsel kannst du unten zusätzlich jeden Mieter einzeln als eigenes PDF öffnen.
+            </p>
+        </div>
     <?php endif; ?>
 
     <?php
@@ -379,9 +400,26 @@
         <h3>Abrechnung je Mieter</h3>
 
         <?php if (!empty($statement['grouped_tenant_statements'])) : ?>
-            <?php foreach ($statement['grouped_tenant_statements'] as $tenant_statement) : ?>
-                <div style="border:1px solid #ddd; padding:15px; margin-bottom:25px;">
+            <?php foreach ($statement['grouped_tenant_statements'] as $tenant_index => $tenant_statement) : ?>
+                <?php if ($vm_pdf_mode && $vm_pdf_tenant_index !== 'all' && (int) $vm_pdf_tenant_index !== (int) $tenant_index) { continue; } ?>
+                <?php
+                $vm_visible_tenant_indexes = array_keys($statement['grouped_tenant_statements']);
+                $vm_last_visible_tenant_index = end($vm_visible_tenant_indexes);
+                ?>
+                <div class="vm-tenant-statement <?php echo ($vm_pdf_mode && $vm_pdf_tenant_index === 'all' && (int) $tenant_index !== (int) $vm_last_visible_tenant_index) ? 'vm-pdf-page-break' : ''; ?>" style="border:1px solid #ddd; padding:15px; margin-bottom:25px;">
                     <h4><?php echo esc_html($tenant_statement['tenant_name']); ?></h4>
+
+                    <?php if (!$vm_pdf_mode) : ?>
+                        <p class="vm-export-controls" style="margin:0 0 12px;">
+                            <button type="button"
+                                    data-vm-pdf-export="1"
+                                    data-property-id="<?php echo esc_attr($selected_property_id); ?>"
+                                    data-year="<?php echo esc_attr($selected_year); ?>"
+                                    data-tenant-index="<?php echo esc_attr($tenant_index); ?>">
+                                <i class="fa-solid fa-file-pdf"></i> PDF für diesen Mieter
+                            </button>
+                        </p>
+                    <?php endif; ?>
 
                     <p>
                         <strong>Eingezogen am:</strong> <?php echo esc_html($tenant_statement['move_in_date'] ?: '—'); ?><br>
@@ -434,7 +472,7 @@
 
                     $is_credit = $tenant_total_balance < 0;
                     $is_debit  = $tenant_total_balance > 0;
-                    $prefix = $tenant_total_balance > 0 ? '-' : '';
+                    $prefix = ''; // Kosten minus Vorauszahlungen: positiv = Nachzahlung, negativ = Guthaben
                     ?>
 
                     <h5 style="margin:18px 0 8px;">Ergebnis / Vorauszahlungen</h5>

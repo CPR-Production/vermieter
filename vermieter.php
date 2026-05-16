@@ -2,7 +2,7 @@
 /*
 Plugin Name: Vermieter / Nebenkostenabrechnung
 Description: Nebenkostenverwaltung für Vermieter
-Version: 0.10.17.13
+Version: 0.11
 Author: Christian Husemann
 */
 
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('VERMIETER_VERSION', '0.10.17.13');
+define('VERMIETER_VERSION', '0.11');
 define('VERMIETER_DB_VERSION', '0.10.17.11');
 define('VERMIETER_PLUGIN_FILE', __FILE__);
 define('VERMIETER_PATH', plugin_dir_path(__FILE__));
@@ -24,6 +24,7 @@ require_once VERMIETER_PATH . 'includes/class-admin-pages.php';
 require_once VERMIETER_PATH . 'includes/class-site-structure.php';
 
 require_once VERMIETER_PATH . 'modules/class-nebenkosten-billing.php';
+require_once VERMIETER_PATH . 'modules/class-pdf-export.php';
 require_once VERMIETER_PATH . 'modules/class-tenancy-rent-terms.php';
 require_once VERMIETER_PATH . 'modules/class-tenancy-advance-terms.php';
 require_once VERMIETER_PATH . 'modules/class-tenant-payments.php';
@@ -46,6 +47,7 @@ register_activation_hook(VERMIETER_PLUGIN_FILE, ['Vermieter_Activator', 'activat
 register_activation_hook(VERMIETER_PLUGIN_FILE, ['Vermieter_Site_Structure', 'install_default_structure']);
 add_action('plugins_loaded', ['Vermieter_DB', 'maybe_upgrade']);
 add_action('init', ['Vermieter_Shortcodes', 'register']);
+add_action('init', ['Vermieter_PDF_Export', 'register']);
 add_action('admin_menu', ['Vermieter_Admin_Pages', 'register_menu']);
 
 add_action('wp_enqueue_scripts', function () {
@@ -64,6 +66,26 @@ add_action('wp_enqueue_scripts', function() {
         [],
         '6.5.0'
     );
+});
+
+
+add_action('wp_enqueue_scripts', function () {
+    wp_enqueue_script(
+        'vermieter-pdf-export',
+        VERMIETER_URL . 'assets/js/vm-pdf-export.js',
+        [],
+        VERMIETER_VERSION,
+        true
+    );
+
+    wp_localize_script('vermieter-pdf-export', 'vmPdfExport', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce'   => wp_create_nonce('vm_pdf_export_nonce'),
+        'labels'  => [
+            'loading' => 'PDF-Ansicht wird vorbereitet …',
+            'error'   => 'PDF-Ansicht konnte nicht erstellt werden.',
+        ],
+    ]);
 });
 
 add_action('wp_enqueue_scripts', function () {
