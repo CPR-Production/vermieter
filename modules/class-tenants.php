@@ -26,10 +26,11 @@ class Vermieter_Tenants {
                 'last_name'  => vm_format_name(sanitize_text_field($data['last_name'] ?? '')),
                 'email'      => sanitize_email($data['email'] ?? ''),
                 'phone'      => sanitize_text_field($data['phone'] ?? ''),
+                'mailing_address' => self::sanitize_mailing_address($data['mailing_address'] ?? ''),
                 'iban'       => sanitize_text_field($data['iban'] ?? ''),
                 'bank_name'  => sanitize_text_field($data['bank_name'] ?? ''),
             ],
-            ['%d','%s','%s','%s','%s','%s','%s','%s']
+            ['%d','%s','%s','%s','%s','%s','%s','%s','%s']
         );
 
         return $inserted ? (int) $wpdb->insert_id : false;
@@ -66,6 +67,25 @@ class Vermieter_Tenants {
                 get_current_user_id()
             )
         );
+    }
+
+
+
+    public static function sanitize_mailing_address($address) {
+        $address = sanitize_textarea_field((string) $address);
+        $parts = array_filter(array_map('trim', explode(';', $address)), function ($part) {
+            return $part !== '';
+        });
+
+        return implode('; ', $parts);
+    }
+
+    public static function format_mailing_address_lines($address) {
+        $parts = array_filter(array_map('trim', explode(';', (string) $address)), function ($part) {
+            return $part !== '';
+        });
+
+        return array_values($parts);
     }
 
     public static function get_display_name($tenant) {

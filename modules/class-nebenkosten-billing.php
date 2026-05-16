@@ -551,6 +551,7 @@ class Vermieter_Nebenkosten_Billing
             ),
             'move_in_date'        => $apartment_tenant->move_in_date ?? '',
             'move_out_date'       => $apartment_tenant->move_out_date ?? '',
+            'mailing_address'     => $apartment_tenant->mailing_address ?? '',
             'cost_items'          => [],
             'cost_sum'            => 0.0,
             'nk_advance_sum'      => 0.0,
@@ -582,7 +583,8 @@ class Vermieter_Nebenkosten_Billing
                     p.name AS property_name,
                     t.salutation,
                     t.first_name,
-                    t.last_name
+                    t.last_name,
+                    t.mailing_address
                  FROM $table_links at
                  LEFT JOIN $table_apartments a ON at.apartment_id = a.id
                  LEFT JOIN $table_properties p ON a.property_id = p.id
@@ -639,6 +641,7 @@ class Vermieter_Nebenkosten_Billing
                     'tenant_name'          => $statement['tenant_name'] ?? '',
                     'move_in_date'         => $statement['move_in_date'] ?? '',
                     'move_out_date'        => $statement['move_out_date'] ?? '',
+                    'mailing_address'      => $statement['mailing_address'] ?? '',
                     'apartment_tenant_ids' => [],
                     'cost_items'           => [],
                     'cost_sum'             => 0.0,

@@ -484,6 +484,7 @@ class Vermieter_Shortcodes {
                 'last_name'  => sanitize_text_field(wp_unslash($_POST['vm_last_name'] ?? '')),
                 'email'      => sanitize_email(wp_unslash($_POST['vm_email'] ?? '')),
                 'phone'      => sanitize_text_field(wp_unslash($_POST['vm_phone'] ?? '')),
+                'mailing_address' => sanitize_textarea_field(wp_unslash($_POST['vm_mailing_address'] ?? '')),
                 'iban'       => sanitize_text_field(wp_unslash($_POST['vm_iban'] ?? '')),
                 'bank_name'  => sanitize_text_field(wp_unslash($_POST['vm_bank_name'] ?? '')),
             ]);

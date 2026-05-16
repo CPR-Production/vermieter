@@ -42,6 +42,12 @@
             <input type="text" name="vm_phone" id="vm_phone">
         </p>
         <p>
+            <label for="vm_mailing_address">Versandadresse / neue Anschrift (optional)</label><br>
+            <textarea name="vm_mailing_address" id="vm_mailing_address" rows="3" placeholder="Straße Hausnr.; PLZ Ort"></textarea><br>
+            <small>Optional, z. B. für ausgezogene Mieter:innen. Mehrere Zeilen mit Semikolon trennen. Bleibt das Feld leer, verwendet das PDF automatisch die Objektadresse.</small>
+        </p>
+
+        <p>
             <label for="vm_iban">IBAN</label><br>
             <input type="text" name="vm_iban" id="vm_iban">
         </p>
@@ -67,6 +73,7 @@
                     <th>Nachname</th>
                     <th>E-Mail</th>
                     <th>Telefon</th>
+                    <th>Versandadresse</th>
                     <th>IBAN</th>
                     <th>Bank</th>
                 </tr>
@@ -79,6 +86,7 @@
                         <td><?php echo esc_html($tenant->last_name); ?></td>
                         <td><?php echo esc_html($tenant->email); ?></td>
                         <td><?php echo esc_html($tenant->phone); ?></td>
+                        <td><?php echo esc_html($tenant->mailing_address ?? ''); ?></td>
                         <td><?php echo esc_html($tenant->iban); ?></td>
                         <td><?php echo esc_html($tenant->bank_name); ?></td>
                     </tr>

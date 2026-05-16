@@ -364,6 +364,18 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         $move_out = $vm_format_pdf_date($tenant_statement['move_out_date'] ?? '');
         $result_class = $tenant_total_balance < 0 ? 'vm-pdf-result-credit' : ($tenant_total_balance > 0 ? 'vm-pdf-result-debit' : '');
         $result_label = $tenant_total_balance > 0 ? 'Nachzahlung' : ($tenant_total_balance < 0 ? 'Guthaben' : 'Ausgeglichen');
+        $tenant_address_lines = Vermieter_Tenants::format_mailing_address_lines($tenant_statement['mailing_address'] ?? '');
+
+        if (empty($tenant_address_lines)) {
+            $tenant_address_lines = [
+                trim(($property->street ?? '') . ' ' . ($property->house_number ?? '')),
+                trim(($property->zip_code ?? '') . ' ' . ($property->city ?? '')),
+            ];
+        }
+
+        $tenant_address_lines = array_values(array_filter($tenant_address_lines, function ($line) {
+            return trim((string) $line) !== '';
+        }));
         ?>
         <section class="vm-pdf-cover">
             <div class="vm-pdf-header">
@@ -380,7 +392,10 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
             </div>
 
             <div class="vm-pdf-address">
-                <?php echo esc_html($tenant_name); ?>
+                <?php echo esc_html($tenant_name); ?><br>
+                <?php foreach ($tenant_address_lines as $address_line) : ?>
+                    <?php echo esc_html($address_line); ?><br>
+                <?php endforeach; ?>
             </div>
 
             <div class="vm-pdf-meta">

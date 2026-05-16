@@ -133,6 +133,7 @@ class Vermieter_DB {
             last_name VARCHAR(100) NOT NULL,
             email VARCHAR(190) NULL,
             phone VARCHAR(50) NULL,
+            mailing_address TEXT NULL,
             iban VARCHAR(34) NULL,
             bank_name VARCHAR(190) NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

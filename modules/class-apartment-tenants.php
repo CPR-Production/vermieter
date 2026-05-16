@@ -101,7 +101,8 @@ class Vermieter_Apartment_Tenants {
                     p.name AS property_name,
                     t.salutation,
                     t.first_name,
-                    t.last_name
+                    t.last_name,
+                    t.mailing_address
                  FROM $table_links at
                  LEFT JOIN $table_apartments a ON at.apartment_id = a.id
                  LEFT JOIN $table_properties p ON a.property_id = p.id
@@ -125,7 +126,8 @@ class Vermieter_Apartment_Tenants {
                     at.*,
                     t.salutation,
                     t.first_name,
-                    t.last_name
+                    t.last_name,
+                    t.mailing_address
                  FROM $table_links at
                  LEFT JOIN $table_tenants t ON at.tenant_id = t.id
                  WHERE at.apartment_id = %d
@@ -152,7 +154,8 @@ class Vermieter_Apartment_Tenants {
                     at.*,
                     t.salutation,
                     t.first_name,
-                    t.last_name
+                    t.last_name,
+                    t.mailing_address
                  FROM $table_links at
                  LEFT JOIN $table_tenants t ON at.tenant_id = t.id
                  WHERE at.apartment_id = %d
