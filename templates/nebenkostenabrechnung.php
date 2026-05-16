@@ -336,8 +336,95 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         <?php endif; ?>
         <?php
     };
+
+    $vm_pdf_logo_url = '';
+    if (defined('VERMIETER_PATH') && file_exists(VERMIETER_PATH . 'assets/img/logo.png')) {
+        $vm_pdf_logo_url = VERMIETER_URL . 'assets/img/logo.png';
+    }
+
+    $vm_format_pdf_date = function ($date) {
+        if (empty($date)) {
+            return '—';
+        }
+
+        $timestamp = strtotime((string) $date);
+        if (!$timestamp) {
+            return (string) $date;
+        }
+
+        return date_i18n('d.m.Y', $timestamp);
+    };
+
+    $vm_render_pdf_cover = function ($tenant_statement, $tenant_total_balance, $tenant_operating_sum, $tenant_heating_sum, $tenant_nk_advance_sum, $tenant_hk_advance_sum) use ($statement, $vm_pdf_logo_url, $vm_format_pdf_date) {
+        $property = $statement['property'];
+        $tenant_name = trim((string) ($tenant_statement['tenant_name'] ?? ''));
+        $year = (int) ($statement['year'] ?? 0);
+        $period_text = '01.01.' . $year . ' bis 31.12.' . $year;
+        $move_in = $vm_format_pdf_date($tenant_statement['move_in_date'] ?? '');
+        $move_out = $vm_format_pdf_date($tenant_statement['move_out_date'] ?? '');
+        $result_class = $tenant_total_balance < 0 ? 'vm-pdf-result-credit' : ($tenant_total_balance > 0 ? 'vm-pdf-result-debit' : '');
+        $result_label = $tenant_total_balance > 0 ? 'Nachzahlung' : ($tenant_total_balance < 0 ? 'Guthaben' : 'Ausgeglichen');
+        ?>
+        <section class="vm-pdf-cover">
+            <div class="vm-pdf-header">
+                <div class="vm-pdf-sender">
+                    <?php echo esc_html($property->name ?? ''); ?> ·
+                    <?php echo esc_html(trim(($property->street ?? '') . ' ' . ($property->house_number ?? ''))); ?> ·
+                    <?php echo esc_html(trim(($property->zip_code ?? '') . ' ' . ($property->city ?? ''))); ?>
+                </div>
+                <?php if (!empty($vm_pdf_logo_url)) : ?>
+                    <div class="vm-pdf-logo-wrap">
+                        <img class="vm-pdf-logo" src="<?php echo esc_url($vm_pdf_logo_url); ?>" alt="Logo">
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="vm-pdf-address">
+                <?php echo esc_html($tenant_name); ?>
+            </div>
+
+            <div class="vm-pdf-meta">
+                <?php echo esc_html(date_i18n('d.m.Y')); ?>
+            </div>
+
+            <div class="vm-pdf-letter">
+                <h1>Nebenkostenabrechnung <?php echo esc_html($year); ?></h1>
+
+                <p>Sehr geehrte/r <?php echo esc_html($tenant_name); ?>,</p>
+
+                <p>anbei erhalten Sie die Nebenkostenabrechnung für das Abrechnungsjahr <?php echo esc_html($year); ?>.</p>
+
+                <p>
+                    <strong>Objekt:</strong>
+                    <?php echo esc_html(($property->name ?? '') . ', ' . trim(($property->street ?? '') . ' ' . ($property->house_number ?? '')) . ', ' . trim(($property->zip_code ?? '') . ' ' . ($property->city ?? ''))); ?><br>
+                    <strong>Abrechnungszeitraum:</strong> <?php echo esc_html($period_text); ?><br>
+                    <strong>Nutzungszeitraum:</strong> <?php echo esc_html($move_in); ?> bis <?php echo esc_html($move_out); ?>
+                </p>
+
+                <div class="vm-pdf-result-box <?php echo esc_attr($result_class); ?>">
+                    <span class="vm-pdf-result-label"><?php echo esc_html($result_label); ?> aus der Nebenkostenabrechnung</span>
+                    <span class="vm-pdf-result-amount"><?php echo esc_html(vm_format_money(abs($tenant_total_balance))); ?></span>
+                </div>
+
+                <p>Die Zusammensetzung der Kosten, die angesetzten Vorauszahlungen sowie die Berechnung des Ergebnisses finden Sie auf den folgenden Seiten.</p>
+
+                <p>Bitte prüfen Sie die Abrechnung in Ruhe. Bei Rückfragen melden Sie sich gerne.</p>
+
+                <p>Mit freundlichen Grüßen</p>
+            </div>
+
+            <div class="vm-pdf-letter-footer">
+                Nebenkosten: <?php echo esc_html(vm_format_money($tenant_operating_sum)); ?> ·
+                Heizkosten: <?php echo esc_html(vm_format_money($tenant_heating_sum)); ?> ·
+                Vorauszahlungen NK: <?php echo esc_html(vm_format_money($tenant_nk_advance_sum)); ?> ·
+                Vorauszahlungen HK: <?php echo esc_html(vm_format_money($tenant_hk_advance_sum)); ?>
+            </div>
+        </section>
+        <?php
+    };
     ?>
 
+    <?php if (!$vm_pdf_mode) : ?>
     <div style="margin-bottom:20px;">
         <h3>Objekt</h3>
         <p>
@@ -395,6 +482,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         'Summe Heizkosten'
     );
     ?>
+    <?php endif; ?>
 
     <div>
         <h3>Abrechnung je Mieter</h3>
@@ -405,8 +493,38 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                 <?php
                 $vm_visible_tenant_indexes = array_keys($statement['grouped_tenant_statements']);
                 $vm_last_visible_tenant_index = end($vm_visible_tenant_indexes);
+
+                if ($vm_pdf_mode) {
+                    $vm_cover_operating_sum = 0.0;
+                    $vm_cover_heating_sum = 0.0;
+
+                    foreach (($tenant_statement['cost_items'] ?? []) as $vm_cover_item) {
+                        if ($vm_is_heating_item($vm_cover_item)) {
+                            $vm_cover_heating_sum += (float) ($vm_cover_item['tenant_share'] ?? 0);
+                        } else {
+                            $vm_cover_operating_sum += (float) ($vm_cover_item['tenant_share'] ?? 0);
+                        }
+                    }
+
+                    $vm_cover_nk_advance_sum = (float) ($tenant_statement['nk_advance_sum'] ?? 0);
+                    $vm_cover_hk_advance_sum = (float) ($tenant_statement['hk_advance_sum'] ?? 0);
+                    $vm_cover_total_balance = round(
+                        ($vm_cover_operating_sum - $vm_cover_nk_advance_sum) +
+                        ($vm_cover_heating_sum - $vm_cover_hk_advance_sum),
+                        2
+                    );
+
+                    $vm_render_pdf_cover(
+                        $tenant_statement,
+                        $vm_cover_total_balance,
+                        $vm_cover_operating_sum,
+                        $vm_cover_heating_sum,
+                        $vm_cover_nk_advance_sum,
+                        $vm_cover_hk_advance_sum
+                    );
+                }
                 ?>
-                <div class="vm-tenant-statement <?php echo ($vm_pdf_mode && $vm_pdf_tenant_index === 'all' && (int) $tenant_index !== (int) $vm_last_visible_tenant_index) ? 'vm-pdf-page-break' : ''; ?>" style="border:1px solid #ddd; padding:15px; margin-bottom:25px;">
+                <div class="vm-tenant-statement vm-pdf-detail-page <?php echo $vm_pdf_mode ? 'vm-pdf-tenant-card' : ''; ?> <?php echo ($vm_pdf_mode && $vm_pdf_tenant_index === 'all' && (int) $tenant_index !== (int) $vm_last_visible_tenant_index) ? 'vm-pdf-page-break' : ''; ?>" style="border:1px solid #ddd; padding:15px; margin-bottom:25px;">
                     <h4><?php echo esc_html($tenant_statement['tenant_name']); ?></h4>
 
                     <?php if (!$vm_pdf_mode) : ?>
@@ -473,7 +591,35 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                     $is_credit = $tenant_total_balance < 0;
                     $is_debit  = $tenant_total_balance > 0;
                     $prefix = ''; // Kosten minus Vorauszahlungen: positiv = Nachzahlung, negativ = Guthaben
+
                     ?>
+
+                    <?php if ($vm_pdf_mode) : ?>
+                        <div class="vm-pdf-object-overview">
+                            <h3>Objekt und Kostenübersicht</h3>
+                            <p>
+                                <strong><?php echo esc_html($statement['property']->name); ?></strong><br>
+                                <?php echo esc_html($statement['property']->street . ' ' . $statement['property']->house_number . ', ' . $statement['property']->zip_code . ' ' . $statement['property']->city); ?><br>
+                                <strong>Abrechnungsjahr:</strong> <?php echo esc_html($statement['year']); ?>
+                            </p>
+                        </div>
+
+                        <?php
+                        $vm_render_object_cost_table(
+                            'Gesamt Nebenkosten des Objekts',
+                            $operating_costs,
+                            'Keine Nebenkosten für dieses Jahr vorhanden.',
+                            'Summe Nebenkosten'
+                        );
+
+                        $vm_render_object_cost_table(
+                            'Gesamt Heizkosten des Objekts',
+                            $heating_costs,
+                            'Keine Heizkosten für dieses Jahr vorhanden.',
+                            'Summe Heizkosten'
+                        );
+                        ?>
+                    <?php endif; ?>
 
                     <h5 style="margin:18px 0 8px;">Ergebnis / Vorauszahlungen</h5>
 

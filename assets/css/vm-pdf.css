@@ -1,0 +1,224 @@
+/* Druck-/PDF-Layout für Nebenkostenabrechnung */
+@page {
+    size: A4 portrait;
+    margin: 16mm 14mm 14mm 14mm;
+}
+
+.vm-pdf-body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #1f2933;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.45;
+}
+
+.vm-pdf-body .vm-wrap {
+    max-width: none;
+    margin: 0;
+}
+
+.vm-pdf-body h2,
+.vm-pdf-body > .vm-wrap > h2 {
+    display: none;
+}
+
+.vm-pdf-cover {
+    position: relative;
+    min-height: 252mm;
+    page-break-after: always;
+    break-after: page;
+    padding: 0;
+}
+
+.vm-pdf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 30mm;
+}
+
+.vm-pdf-sender {
+    font-size: 9pt;
+    color: #6b7280;
+    border-bottom: 1px solid #d1d5db;
+    padding-bottom: 2mm;
+    max-width: 115mm;
+}
+
+.vm-pdf-logo-wrap {
+    width: 38mm;
+    min-height: 20mm;
+    text-align: right;
+}
+
+.vm-pdf-logo {
+    max-width: 38mm;
+    max-height: 22mm;
+    object-fit: contain;
+}
+
+.vm-pdf-address {
+    margin: 0 0 18mm 0;
+    min-height: 32mm;
+    white-space: pre-line;
+    font-size: 10.5pt;
+}
+
+.vm-pdf-meta {
+    text-align: right;
+    margin-bottom: 15mm;
+    font-size: 10pt;
+}
+
+.vm-pdf-letter h1 {
+    font-size: 17pt;
+    line-height: 1.2;
+    margin: 0 0 10mm;
+    color: #111827;
+}
+
+.vm-pdf-letter p {
+    margin: 0 0 4.5mm;
+}
+
+.vm-pdf-result-box {
+    margin: 9mm 0;
+    padding: 6mm;
+    border: 1px solid #d1d5db;
+    border-left: 4mm solid #9ca3af;
+    background: #f9fafb;
+}
+
+.vm-pdf-result-box.vm-pdf-result-credit {
+    border-left-color: #2e7d32;
+}
+
+.vm-pdf-result-box.vm-pdf-result-debit {
+    border-left-color: #c62828;
+}
+
+.vm-pdf-result-label {
+    display: block;
+    font-size: 9pt;
+    color: #6b7280;
+    margin-bottom: 1mm;
+}
+
+.vm-pdf-result-amount {
+    display: block;
+    font-size: 16pt;
+    font-weight: 700;
+}
+
+.vm-pdf-letter-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 4mm;
+    color: #6b7280;
+    font-size: 8.5pt;
+}
+
+.vm-pdf-detail-page {
+    page-break-after: always;
+    break-after: page;
+}
+
+.vm-pdf-detail-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+}
+
+.vm-pdf-object-overview {
+    margin-bottom: 8mm;
+}
+
+.vm-pdf-tenant-card {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.vm-pdf-tenant-card h4 {
+    font-size: 15pt;
+    margin: 0 0 4mm;
+    border-bottom: 2px solid #111827;
+    padding-bottom: 2mm;
+}
+
+.vm-pdf-body h3 {
+    font-size: 13pt;
+    margin: 0 0 4mm;
+}
+
+.vm-pdf-body h5 {
+    font-size: 11pt;
+    margin: 7mm 0 2mm !important;
+}
+
+.vm-pdf-body table {
+    width: 100%;
+    table-layout: auto !important;
+    border-collapse: collapse;
+    margin: 2mm 0 5mm;
+    font-size: 8.5pt;
+}
+
+.vm-pdf-body table th,
+.vm-pdf-body table td {
+    padding: 2.2mm 2mm !important;
+    border: 1px solid #e5e7eb;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.vm-pdf-body table thead th {
+    background: #f3f4f6 !important;
+    color: #111827;
+    font-weight: 700;
+    text-align: left;
+}
+
+.vm-pdf-body table tfoot th,
+.vm-pdf-body .vm-subtotal th,
+.vm-pdf-body .vm-total th {
+    background: #f9fafb !important;
+}
+
+.vm-pdf-body .vm-summary-table {
+    font-size: 10pt;
+    margin-top: 3mm;
+}
+
+.vm-pdf-body .vm-summary-table th,
+.vm-pdf-body .vm-summary-table td {
+    padding: 3mm !important;
+}
+
+.vm-pdf-body .vm-credit td:last-child,
+.vm-pdf-body .vm-credit th:last-child {
+    color: #2e7d32;
+}
+
+.vm-pdf-body .vm-debit td:last-child,
+.vm-pdf-body .vm-debit th:last-child {
+    color: #c62828;
+}
+
+.vm-pdf-body .vm-export-controls,
+.vm-pdf-body .vm-screen-only,
+.vm-pdf-body form,
+.vm-pdf-body button {
+    display: none !important;
+}
+
+@media print {
+    .vm-pdf-body table { page-break-inside: auto; }
+    .vm-pdf-body tr { page-break-inside: avoid; page-break-after: auto; }
+    .vm-pdf-cover { page-break-after: always; }
+}

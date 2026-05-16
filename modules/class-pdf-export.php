@@ -38,6 +38,7 @@ class Vermieter_PDF_Export
         echo '<!doctype html><html><head><meta charset="utf-8"><title>' . esc_html__('Nebenkostenabrechnung', 'vermieter') . '</title>';
         echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
         echo '<link rel="stylesheet" href="' . esc_url(VERMIETER_URL . 'assets/css/vermieter.css?ver=' . VERMIETER_VERSION) . '">';
+        echo '<link rel="stylesheet" href="' . esc_url(VERMIETER_URL . 'assets/css/vm-pdf.css?ver=' . VERMIETER_VERSION) . '">';
         echo '<style>
             body { margin: 0; padding: 24px; background: #fff; color: #111; font-family: Arial, sans-serif; }
             .vm-wrap { max-width: none; }
@@ -53,7 +54,7 @@ class Vermieter_PDF_Export
                 .vm-pdf-page-break { page-break-after: always; break-after: page; }
             }
         </style>';
-        echo '</head><body>';
+        echo '</head><body class="vm-pdf-body">';
 
         echo vm_render_template('nebenkostenabrechnung.php', [
             'properties'           => $properties,
