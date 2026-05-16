@@ -35,6 +35,7 @@
 
 /* Zahlen rechtsbündig */
 .vm-wrap table td:nth-child(5),
+.vm-wrap table th:nth-child(6),
 .vm-wrap table td:nth-child(6),
 .vm-wrap table td:nth-child(7),
 .vm-wrap table td:nth-child(8),

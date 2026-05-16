@@ -102,7 +102,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                     $distribution_key = Vermieter_Property_Distribution_Keys::get($property_distribution_key_id);
                     $key_label = $distribution_key->label ?? '—';
                     $allocation_total = isset($distribution_key->total_value) ? (float) $distribution_key->total_value : 0.0;
-                    $allocation_display = $key_label . ' / ' . number_format($allocation_total, 2, ',', '.');
+                    $allocation_display = $key_label ;//. ' / ' . number_format($allocation_total, 2, ',', '.');
                     break;
             }
         }
@@ -121,7 +121,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         <tr>
                             <th>Rechnung / Position</th>
                             <th>Kategorie</th>
-                            <th>Gesamtkosten (€)</th>
+                            <th>Gesamtkosten</th>
                             <th>Aufteilung gesamt</th>
                         </tr>
                     </thead>
@@ -135,16 +135,19 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                             <tr>
                                 <td><?php echo esc_html($cost->name); ?></td>
                                 <td><?php echo esc_html($category->name ?? '—'); ?></td>
-                                <td><?php echo esc_html(number_format((float) $cost->betrag, 2, ',', '.')); ?></td>
-                                <td><?php echo esc_html($vm_get_allocation_display($cost)); ?></td>
+                                <td style="text-align:right"><?php echo esc_html(vm_format_money($cost->betrag)); ?></td>
+                                <td style="text-align:right"><?php echo esc_html($vm_get_allocation_display($cost)); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
+                    <tfoot>
+                    <tr>
+                        <th colspan="2"><?php echo esc_html($sum_label); ?></th>
+                        <th style="text-align:right"><?php echo esc_html(vm_format_money($sum)); ?></th>
+                        <th></th> 
+                    </tr>
+                </tfoot>
                 </table>
-                <p style="margin-top:10px;">
-                    <strong><?php echo esc_html($sum_label); ?>:</strong>
-                    <?php echo esc_html(number_format((float) $sum, 2, ',', '.')); ?> €
-                </p>
             <?php else : ?>
                 <p><?php echo esc_html($empty_text); ?></p>
             <?php endif; ?>
@@ -177,14 +180,14 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                 <thead>
                     <tr>
                         <th>Kostenposition</th>
-                        <th>Einheit</th>
-                        <th>Gesamtkosten (€)</th>
+                        <!-- <th>Einheit</th> -->
+                        <th>Gesamtkosten</th>
                         <th>Verteiler / Schlüssel</th>
                         <?php if ($show_time_columns): ?>
-                            <th>Anteil vor Zeitfaktor (€)</th>
+                            <th>Anteil vor Zeitfaktor</th>
                             <th>Tageanteil</th>
                         <?php endif; ?>
-                        <th>Anteil (€)</th>
+                        <th>Anteil</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -264,7 +267,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         });
                         ?>
                         <tr style="background:#f5f5f5;">
-                            <th colspan="<?php echo esc_attr($show_time_columns ? 7 : 5); ?>" style="text-align:left;">
+                            <th colspan="<?php echo esc_attr($show_time_columns ? 6 : 4); ?>" style="text-align:left;">
                                 Einheit: <?php echo esc_html($apartment_group['apartment_name']); ?>
                             </th>
                         </tr>
@@ -277,8 +280,8 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                         <br><small><?php echo esc_html($item['category_name']); ?></small>
                                     <?php endif; ?>
                                 </td>
-                                <td><?php echo esc_html($item['apartment_name']); ?></td>
-                                <td><?php echo esc_html(vm_format_money($item['total_cost'] ?? 0)); ?></td>
+                                <!-- <td><?php echo esc_html($item['apartment_name']); ?></td> -->
+                                <td style="text-align:right"><?php echo esc_html(vm_format_money($item['total_cost'] ?? 0)); ?></td>
                                 <td>
                                     <?php if (!empty($item['allocation_display'])) : ?>
                                         <?php echo esc_html($item['allocation_display']); ?>
@@ -288,7 +291,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                 </td>
 
                                 <?php if ($show_time_columns): ?>
-                                    <td><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
+                                    <td style="text-align:right"><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
                                     <td>
                                         <?php
                                         $occupied_days = (int) ($item['occupied_days'] ?? 0);
@@ -302,32 +305,32 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                     </td>
                                 <?php endif; ?>
 
-                                <td><?php echo esc_html(vm_format_money($item['tenant_share'] ?? 0)); ?></td>
+                                <td style="text-align:right"><?php echo esc_html(vm_format_money($item['tenant_share'] ?? 0)); ?></td>
                             </tr>
                         <?php endforeach; ?>
 
                         <tr style="background:#fafafa;">
-                            <th colspan="2" style="text-align:right;">Zwischensumme <?php echo esc_html($apartment_group['apartment_name']); ?></th>
-                            <th><?php echo esc_html(vm_format_money($apartment_group['sum_total_cost'])); ?></th>
+                            <th colspan="1" style="text-align:right;">Zwischensumme<br> <?php echo esc_html($apartment_group['apartment_name']); ?></th>
+                            <th style="text-align:right"><?php echo esc_html(vm_format_money($apartment_group['sum_total_cost'])); ?></th>
                             <th></th>
                             <?php if ($show_time_columns): ?>
-                                <th><?php echo esc_html(vm_format_money($apartment_group['sum_share_before_factor'])); ?></th>
+                                <th style="text-align:right"><?php echo esc_html(vm_format_money($apartment_group['sum_share_before_factor'])); ?></th>
                                 <th></th>
                             <?php endif; ?>
-                            <th><?php echo esc_html(vm_format_money($apartment_group['sum_tenant_share'])); ?></th>
+                            <th style="text-align:right"><?php echo esc_html(vm_format_money($apartment_group['sum_tenant_share'])); ?></th>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th colspan="2">Summe</th>
-                        <th><?php echo esc_html(vm_format_money($sum_total_cost)); ?></th>
-                        <th></th>
+                        <th colspan="1">Summe</th>
+                        <th style="text-align:right"><?php echo esc_html(vm_format_money($sum_total_cost)); ?></th>
+                        <th></th> 
                         <?php if ($show_time_columns): ?>
-                            <th><?php echo esc_html(vm_format_money($sum_share_before_factor)); ?></th>
+                            <th style="text-align:right"><?php echo esc_html(vm_format_money($sum_share_before_factor)); ?></th>
                             <th></th>
                         <?php endif; ?>
-                        <th><?php echo esc_html(vm_format_money($sum_tenant_share)); ?></th>
+                        <th style="text-align:right"><?php echo esc_html(vm_format_money($sum_tenant_share)); ?></th>
                     </tr>
                 </tfoot>
             </table>
@@ -355,9 +358,52 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         return date_i18n('d.m.Y', $timestamp);
     };
 
-    $vm_render_pdf_cover = function ($tenant_statement, $tenant_total_balance, $tenant_operating_sum, $tenant_heating_sum, $tenant_nk_advance_sum, $tenant_hk_advance_sum) use ($statement, $vm_pdf_logo_url, $vm_format_pdf_date) {
+    $vm_settings = class_exists('Vermieter_Admin_Pages')
+        ? Vermieter_Admin_Pages::get_vm_settings()
+        : [];
+
+    $vm_render_pdf_cover = function ($tenant_statement, $tenant_total_balance, $tenant_operating_sum, $tenant_heating_sum, $tenant_nk_advance_sum, $tenant_hk_advance_sum) use ($statement, $vm_pdf_logo_url, $vm_format_pdf_date, $vm_settings) {
         $property = $statement['property'];
         $tenant_name = trim((string) ($tenant_statement['tenant_name'] ?? ''));
+        $tenant_salutation = trim((string) ($tenant_statement['tenant_salutation'] ?? ''));
+        $tenant_full_name = trim((string) ($tenant_statement['tenant_full_name'] ?? ''));
+        if ($tenant_full_name === '') {
+            $tenant_full_name = trim(preg_replace('/^(Herr|Frau|Familie|Firma)\s+/i', '', $tenant_name));
+        }
+
+        $address_salutation = $tenant_salutation;
+        if ($tenant_salutation === 'Herr') {
+            $address_salutation = 'Herrn';
+        }
+
+        $letter_salutation = 'Sehr geehrte Damen und Herren,';
+        if ($tenant_salutation === 'Herr' && $tenant_full_name !== '') {
+            $letter_salutation = 'Sehr geehrter Herr ' . $tenant_full_name . ',';
+        } elseif ($tenant_salutation === 'Frau' && $tenant_full_name !== '') {
+            $letter_salutation = 'Sehr geehrte Frau ' . $tenant_full_name . ',';
+        } elseif ($tenant_name !== '') {
+            $letter_salutation = 'Sehr geehrte ' . $tenant_name . ',';
+        }
+
+        $pdf_sender_parts = array_filter([
+            trim((string) ($vm_settings['landlord_name'] ?? '')),
+            trim((string) ($vm_settings['landlord_street'] ?? '')),
+            trim(trim((string) ($vm_settings['landlord_zip'] ?? '')) . ' ' . trim((string) ($vm_settings['landlord_city'] ?? ''))),
+        ]);
+
+        if (empty($pdf_sender_parts)) {
+            $pdf_sender_parts = array_filter([
+                trim((string) ($property->name ?? '')),
+                trim(($property->street ?? '') . ' ' . ($property->house_number ?? '')),
+                trim(($property->zip_code ?? '') . ' ' . ($property->city ?? '')),
+            ]);
+        }
+
+        $pdf_address_name = trim($address_salutation . ' ' . $tenant_full_name);
+        if ($pdf_address_name === '') {
+            $pdf_address_name = $tenant_name;
+        }
+
         $year = (int) ($statement['year'] ?? 0);
         $period_text = '01.01.' . $year . ' bis 31.12.' . $year;
         $move_in = $vm_format_pdf_date($tenant_statement['move_in_date'] ?? '');
@@ -379,33 +425,53 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         ?>
         <section class="vm-pdf-cover">
             <div class="vm-pdf-header">
-                <div class="vm-pdf-sender">
-                    <?php echo esc_html($property->name ?? ''); ?> ·
-                    <?php echo esc_html(trim(($property->street ?? '') . ' ' . ($property->house_number ?? ''))); ?> ·
-                    <?php echo esc_html(trim(($property->zip_code ?? '') . ' ' . ($property->city ?? ''))); ?>
-                </div>
-                <?php if (!empty($vm_pdf_logo_url)) : ?>
-                    <div class="vm-pdf-logo-wrap">
-                        <img class="vm-pdf-logo" src="<?php echo esc_url($vm_pdf_logo_url); ?>" alt="Logo">
+                <div class="vm-pdf-header-left">
+
+                    <div class="vm-pdf-sender">
+                        <?php echo esc_html(implode(' · ', $pdf_sender_parts)); ?>
                     </div>
-                <?php endif; ?>
-            </div>
 
-            <div class="vm-pdf-address">
-                <?php echo esc_html($tenant_name); ?><br>
-                <?php foreach ($tenant_address_lines as $address_line) : ?>
-                    <?php echo esc_html($address_line); ?><br>
-                <?php endforeach; ?>
-            </div>
+                    <div class="vm-pdf-address">
+                        <?php echo esc_html($pdf_address_name); ?><br>
 
-            <div class="vm-pdf-meta">
-                <?php echo esc_html(date_i18n('d.m.Y')); ?>
+                        <?php foreach ($tenant_address_lines as $address_line) : ?>
+                            <?php echo esc_html($address_line); ?><br>
+                        <?php endforeach; ?>
+                    </div>
+
+                </div>
+
+                <div class="vm-pdf-header-right">
+
+                    <?php if (!empty($vm_pdf_logo_url)) : ?>
+                        <div class="vm-pdf-logo-wrap">
+                            <img
+                                class="vm-pdf-logo"
+                                src="<?php echo esc_url($vm_pdf_logo_url); ?>"
+                                alt="Logo"
+                            >
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="vm-pdf-date">
+                        <?php echo esc_html(date_i18n('d.m.Y')); ?>
+                    </div>
+                    <!--
+                    OPTIONAL SPÄTER:
+
+                    <div class="vm-pdf-extra">
+                        Vertragsnummer ...
+                        Ansprechpartner ...
+                        Telefon ...
+                    </div>
+                    -->
+                </div>
             </div>
 
             <div class="vm-pdf-letter">
                 <h1>Nebenkostenabrechnung <?php echo esc_html($year); ?></h1>
 
-                <p>Sehr geehrte/r <?php echo esc_html($tenant_name); ?>,</p>
+                <p><?php echo esc_html($letter_salutation); ?></p>
 
                 <p>anbei erhalten Sie die Nebenkostenabrechnung für das Abrechnungsjahr <?php echo esc_html($year); ?>.</p>
 
@@ -423,11 +489,35 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
 
                 <p>Die Zusammensetzung der Kosten, die angesetzten Vorauszahlungen sowie die Berechnung des Ergebnisses finden Sie auf den folgenden Seiten.</p>
 
+                <?php if ($tenant_total_balance > 0) : ?>
+                    <p>
+                        Bitte überweisen Sie die ausstehende Summe von
+                        <strong><?php echo esc_html(vm_format_money($tenant_total_balance)); ?></strong>
+                        auf folgendes Konto:
+                    </p>
+                    <p>
+                        <?php if (!empty($vm_settings['bank_account_holder'])) : ?>
+                            Kontoinhaber: <?php echo esc_html($vm_settings['bank_account_holder']); ?><br>
+                        <?php endif; ?>
+                        <?php if (!empty($vm_settings['bank_iban'])) : ?>
+                            IBAN: <?php echo esc_html($vm_settings['bank_iban']); ?><br>
+                        <?php endif; ?>
+                        <?php if (!empty($vm_settings['bank_bic'])) : ?>
+                            BIC: <?php echo esc_html($vm_settings['bank_bic']); ?><br>
+                        <?php endif; ?>
+                        <?php if (!empty($vm_settings['bank_name'])) : ?>
+                            Bank: <?php echo esc_html($vm_settings['bank_name']); ?>
+                        <?php endif; ?>
+                    </p>
+                <?php elseif ($tenant_total_balance < 0) : ?>
+                    <p>Es ergibt sich ein Guthaben zu Ihren Gunsten.</p>
+                <?php endif; ?>
+
                 <p>Bitte prüfen Sie die Abrechnung in Ruhe. Bei Rückfragen melden Sie sich gerne.</p>
 
                 <p>Mit freundlichen Grüßen</p>
+                <p><?php echo trim((string) ($vm_settings['landlord_name'] ?? '')) ?></p>
             </div>
-
             <div class="vm-pdf-letter-footer">
                 Nebenkosten: <?php echo esc_html(vm_format_money($tenant_operating_sum)); ?> ·
                 Heizkosten: <?php echo esc_html(vm_format_money($tenant_heating_sum)); ?> ·
@@ -437,26 +527,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         </section>
         <?php
     };
-    ?>
 
-    <?php if (!$vm_pdf_mode) : ?>
-    <div style="margin-bottom:20px;">
-        <h3>Objekt</h3>
-        <p>
-            <strong><?php echo esc_html($statement['property']->name); ?></strong><br>
-            <?php
-            echo esc_html(
-                $statement['property']->street . ' ' .
-                $statement['property']->house_number . ', ' .
-                $statement['property']->zip_code . ' ' .
-                $statement['property']->city
-            );
-            ?><br>
-            <strong>Abrechnungsjahr:</strong> <?php echo esc_html($statement['year']); ?>
-        </p>
-    </div>
-
-    <?php
     $operating_costs = [];
     $heating_costs = [];
 
@@ -482,7 +553,26 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
             $operating_costs['cost_' . (int) $cost->id] = $cost;
         }
     }
+    ?>
 
+    <?php if (!$vm_pdf_mode) : ?>
+    <div style="margin-bottom:20px;">
+        <h3>Objekt</h3>
+        <p>
+            <strong><?php echo esc_html($statement['property']->name); ?></strong><br>
+            <?php
+            echo esc_html(
+                $statement['property']->street . ' ' .
+                $statement['property']->house_number . ', ' .
+                $statement['property']->zip_code . ' ' .
+                $statement['property']->city
+            );
+            ?><br>
+            <strong>Abrechnungsjahr:</strong> <?php echo esc_html($statement['year']); ?>
+        </p>
+    </div>
+
+    <?php
     $vm_render_object_cost_table(
         'Gesamt Nebenkosten des Objekts',
         $operating_costs,
@@ -500,8 +590,9 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
     <?php endif; ?>
 
     <div>
+        <?php if (!$vm_pdf_mode) : ?>
         <h3>Abrechnung je Mieter</h3>
-
+        <?php endif; ?>
         <?php if (!empty($statement['grouped_tenant_statements'])) : ?>
             <?php foreach ($statement['grouped_tenant_statements'] as $tenant_index => $tenant_statement) : ?>
                 <?php if ($vm_pdf_mode && $vm_pdf_tenant_index !== 'all' && (int) $vm_pdf_tenant_index !== (int) $tenant_index) { continue; } ?>
@@ -539,6 +630,21 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                     );
                 }
                 ?>
+                <?php if ($vm_pdf_mode) : ?>
+                    <div class="vm-pdf-running-footer">
+                        <span>Nebenkostenabrechnung <?php echo esc_html($statement['year']); ?></span>
+                        <span><?php
+                            echo esc_html(
+                                $statement['property']->street . ' ' .
+                                $statement['property']->house_number . ', ' .
+                                $statement['property']->zip_code . ' ' .
+                                $statement['property']->city
+                            ); 
+                            ?>
+                        </span>
+
+                    </div>
+                <?php endif; ?>
                 <div class="vm-tenant-statement vm-pdf-detail-page <?php echo $vm_pdf_mode ? 'vm-pdf-tenant-card' : ''; ?> <?php echo ($vm_pdf_mode && $vm_pdf_tenant_index === 'all' && (int) $tenant_index !== (int) $vm_last_visible_tenant_index) ? 'vm-pdf-page-break' : ''; ?>" style="border:1px solid #ddd; padding:15px; margin-bottom:25px;">
                     <h4><?php echo esc_html($tenant_statement['tenant_name']); ?></h4>
 

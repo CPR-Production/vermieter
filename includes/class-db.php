@@ -26,6 +26,21 @@ class Vermieter_DB {
         $table_tenant_payments              = $wpdb->prefix . 'vm_tenant_payments';
         $table_heating_statements           = $wpdb->prefix . 'vm_heating_statements';
         $table_heating_statement_items      = $wpdb->prefix . 'vm_heating_statement_items';
+        $table_settings                     = $wpdb->prefix . 'vm_settings';
+
+
+        $sql_settings = "CREATE TABLE $table_settings (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            setting_key VARCHAR(100) NOT NULL,
+            setting_value LONGTEXT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY user_setting_key (user_id, setting_key),
+            KEY user_id (user_id),
+            KEY setting_key (setting_key)
+        ) $charset_collate;";
 
         $sql_tenancy_rent_terms = "CREATE TABLE $table_tenancy_rent_terms (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -320,6 +335,7 @@ class Vermieter_DB {
         dbDelta($sql_tenant_payments);
         dbDelta($sql_heating_statements);
         dbDelta($sql_heating_statement_items);
+        dbDelta($sql_settings);
 
         self::seed_apportionment_types();
         self::install_default_distribution_key_definitions();

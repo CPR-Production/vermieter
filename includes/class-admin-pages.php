@@ -15,6 +15,143 @@ class Vermieter_Admin_Pages {
             'dashicons-admin-page',
             58
         );
+
+        add_submenu_page(
+            'vermieter-admin-pages',
+            'Vermieterdaten',
+            'Vermieterdaten',
+            'manage_options',
+            'vermieter-settings',
+            [__CLASS__, 'render_settings_page']
+        );
+    }
+
+
+    public static function get_settings_fields() {
+        return [
+            'landlord_name'           => 'Name / Firma',
+            'landlord_street'         => 'Straße und Hausnummer',
+            'landlord_zip'            => 'PLZ',
+            'landlord_city'           => 'Ort',
+            'landlord_phone'          => 'Telefon',
+            'landlord_email'          => 'E-Mail',
+            'bank_account_holder'     => 'Kontoinhaber',
+            'bank_iban'               => 'IBAN',
+            'bank_bic'                => 'BIC',
+            'bank_name'               => 'Bankname',
+        ];
+    }
+
+    public static function get_vm_settings($user_id = null) {
+        global $wpdb;
+
+        $user_id = $user_id === null ? get_current_user_id() : (int) $user_id;
+        $table = $wpdb->prefix . 'vm_settings';
+        $settings = [];
+
+        foreach (self::get_settings_fields() as $key => $label) {
+            $settings[$key] = '';
+        }
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT setting_key, setting_value FROM $table WHERE user_id = %d",
+                $user_id
+            )
+        );
+
+        foreach ($rows as $row) {
+            if (array_key_exists($row->setting_key, $settings)) {
+                $settings[$row->setting_key] = (string) $row->setting_value;
+            }
+        }
+
+        return $settings;
+    }
+
+    public static function handle_settings_actions() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return;
+        }
+
+        if (!isset($_POST['vm_settings_action'])) {
+            return;
+        }
+
+        check_admin_referer('vm_settings_action', 'vm_settings_nonce');
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'vm_settings';
+        $user_id = get_current_user_id();
+
+        foreach (self::get_settings_fields() as $key => $label) {
+            $value = sanitize_text_field(wp_unslash($_POST[$key] ?? ''));
+
+            $wpdb->replace(
+                $table,
+                [
+                    'user_id'       => $user_id,
+                    'setting_key'   => $key,
+                    'setting_value' => $value,
+                ],
+                ['%d', '%s', '%s']
+            );
+        }
+
+        add_settings_error(
+            'vermieter_settings',
+            'settings_saved',
+            'Vermieterdaten wurden gespeichert.',
+            'updated'
+        );
+    }
+
+    public static function render_settings_page() {
+        self::handle_settings_actions();
+        $settings = self::get_vm_settings();
+        ?>
+        <div class="wrap">
+            <h1>Vermieterdaten</h1>
+            <p>Diese Daten werden als Absender und für Zahlungshinweise in der PDF-Abrechnung verwendet.</p>
+
+            <?php settings_errors('vermieter_settings'); ?>
+
+            <form method="post">
+                <?php wp_nonce_field('vm_settings_action', 'vm_settings_nonce'); ?>
+                <input type="hidden" name="vm_settings_action" value="save_settings">
+
+                <h2>Absenderdaten</h2>
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <?php foreach (['landlord_name', 'landlord_street', 'landlord_zip', 'landlord_city', 'landlord_phone', 'landlord_email'] as $key) : ?>
+                            <tr>
+                                <th scope="row"><label for="<?php echo esc_attr($key); ?>"><?php echo esc_html(self::get_settings_fields()[$key]); ?></label></th>
+                                <td><input type="text" class="regular-text" id="<?php echo esc_attr($key); ?>" name="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($settings[$key] ?? ''); ?>"></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <h2>Bankdaten</h2>
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <?php foreach (['bank_account_holder', 'bank_iban', 'bank_bic', 'bank_name'] as $key) : ?>
+                            <tr>
+                                <th scope="row"><label for="<?php echo esc_attr($key); ?>"><?php echo esc_html(self::get_settings_fields()[$key]); ?></label></th>
+                                <td><input type="text" class="regular-text" id="<?php echo esc_attr($key); ?>" name="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($settings[$key] ?? ''); ?>"></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <?php submit_button('Vermieterdaten speichern'); ?>
+            </form>
+        </div>
+        <?php
     }
 
     public static function get_page_definitions() {

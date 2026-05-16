@@ -544,6 +544,11 @@ class Vermieter_Nebenkosten_Billing
             'year'                => (int) $year,
             'apartment_tenant_id' => (int) $apartment_tenant->id,
             'tenant_id'           => (int) $apartment_tenant->tenant_id,
+            'tenant_salutation'   => $apartment_tenant->salutation ?? '',
+            'tenant_full_name'    => trim(
+                ($apartment_tenant->first_name ?? '') . ' ' .
+                ($apartment_tenant->last_name ?? '')
+            ),
             'tenant_name'         => trim(
                 ($apartment_tenant->salutation ?? '') . ' ' .
                 ($apartment_tenant->first_name ?? '') . ' ' .
