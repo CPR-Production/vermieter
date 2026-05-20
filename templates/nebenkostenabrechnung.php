@@ -365,7 +365,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         ? Vermieter_Admin_Pages::get_vm_settings()
         : [];
 
-    $vm_render_pdf_cover = function ($tenant_statement, $tenant_total_balance, $tenant_operating_sum, $tenant_heating_sum, $tenant_nk_advance_sum, $tenant_hk_advance_sum) use ($statement, $vm_pdf_logo_url, $vm_format_pdf_date, $vm_settings) {
+    $vm_render_pdf_cover = function ($tenant_statement, $tenant_total_balance, $tenant_operating_sum, $tenant_heating_sum, $tenant_nk_advance_sum, $tenant_hk_advance_sum, $tenant_settlement_payment_sum = 0.0) use ($statement, $vm_pdf_logo_url, $vm_format_pdf_date, $vm_settings) {
         $property = $statement['property'];
         $tenant_name = trim((string) ($tenant_statement['tenant_name'] ?? ''));
         $tenant_salutation = trim((string) ($tenant_statement['tenant_salutation'] ?? ''));
@@ -490,7 +490,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                     <span class="vm-pdf-result-amount"><?php echo esc_html(vm_format_money(abs($tenant_total_balance))); ?></span>
                 </div>
 
-                <p>Die Zusammensetzung der Kosten, die angesetzten Vorauszahlungen sowie die Berechnung des Ergebnisses finden Sie auf den folgenden Seiten.</p>
+                <p>Die Zusammensetzung der Kosten, die angesetzten Vorauszahlungen sowie bereits erfasste Ausgleichszahlungen finden Sie auf den folgenden Seiten.</p>
 
                 <?php if ($tenant_total_balance > 0) : ?>
                     <p>
@@ -617,9 +617,10 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
 
                     $vm_cover_nk_advance_sum = (float) ($tenant_statement['nk_advance_sum'] ?? 0);
                     $vm_cover_hk_advance_sum = (float) ($tenant_statement['hk_advance_sum'] ?? 0);
+                    $vm_cover_settlement_payment_sum = (float) ($tenant_statement['settlement_payment_sum'] ?? 0);
                     $vm_cover_total_balance = round(
-                        ($vm_cover_operating_sum - $vm_cover_nk_advance_sum) +
-                        ($vm_cover_heating_sum - $vm_cover_hk_advance_sum),
+                        (($vm_cover_operating_sum - $vm_cover_nk_advance_sum) +
+                        ($vm_cover_heating_sum - $vm_cover_hk_advance_sum)) - $vm_cover_settlement_payment_sum,
                         2
                     );
 
@@ -629,7 +630,8 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         $vm_cover_operating_sum,
                         $vm_cover_heating_sum,
                         $vm_cover_nk_advance_sum,
-                        $vm_cover_hk_advance_sum
+                        $vm_cover_hk_advance_sum,
+                        $vm_cover_settlement_payment_sum
                     );
                 }
                 ?>
@@ -709,8 +711,10 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                     $tenant_operating_balance = round($tenant_operating_sum - $tenant_nk_advance_sum, 2);
                     $tenant_heating_balance   = round($tenant_heating_sum - $tenant_hk_advance_sum, 2);
 
-                    // Gesamt
-                    $tenant_total_balance = round($tenant_operating_balance + $tenant_heating_balance, 2);
+                    // Gesamt vor/ nach Zusatz-Zahlungen
+                    $tenant_balance_before_special_payments = round($tenant_operating_balance + $tenant_heating_balance, 2);
+                    $tenant_settlement_payment_sum = (float) ($tenant_statement['settlement_payment_sum'] ?? 0);
+                    $tenant_total_balance = round($tenant_balance_before_special_payments - $tenant_settlement_payment_sum, 2);
 
                     $is_credit = $tenant_total_balance < 0;
                     $is_debit  = $tenant_total_balance > 0;
@@ -778,8 +782,20 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                     <th style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_heating_balance)); ?></th>
                                 </tr>
                                 <!-- Gesamtergebnis -->
+                                <tr class="vm-subtotal">
+                                    <th style="text-align:left;">Ergebnis vor Zusatz-Zahlungen</th>
+                                    <th style="text-align:right;">
+                                        <?php echo esc_html(vm_format_money($tenant_balance_before_special_payments)); ?>
+                                    </th>
+                                </tr>
+                                <?php if (round($tenant_settlement_payment_sum, 2) != 0.0) : ?>
+                                    <tr>
+                                        <td>abzgl. erfasste Zusatz-Zahlungen / Ausgleich</td>
+                                        <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_settlement_payment_sum)); ?></td>
+                                    </tr>
+                                <?php endif; ?>
                                 <tr class="vm-total <?php echo $tenant_total_balance < 0 ? 'vm-credit' : ($tenant_total_balance > 0 ? 'vm-debit' : ''); ?>">
-                                    <th style="text-align:left;">Ergebnis gesamt</th>
+                                    <th style="text-align:left;">Offenes Ergebnis gesamt</th>
                                     <th style="text-align:right;">
                                         <?php echo esc_html($prefix . vm_format_money($tenant_total_balance)); ?>
                                     </th>

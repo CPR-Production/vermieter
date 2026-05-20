@@ -243,15 +243,47 @@ class Vermieter_Shortcodes {
             $selected_id = (int) $_GET['vm_apartment_tenant_id'];
         }
 
+        $message = '';
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'save_tenant_special_payment') {
+            check_admin_referer('vm_save_tenant_special_payment');
+
+            $selected_id = (int) ($_POST['vm_apartment_tenant_id'] ?? $selected_id);
+
+            $id = Vermieter_Tenant_Special_Payments::add([
+                'apartment_tenant_id' => $selected_id,
+                'billing_year'        => (int) ($_POST['vm_billing_year'] ?? 0),
+                'payment_date'        => sanitize_text_field(wp_unslash($_POST['vm_payment_date'] ?? '')),
+                'amount'              => vm_post_decimal('vm_amount'),
+                'payment_type'        => sanitize_key($_POST['vm_payment_type'] ?? 'settlement_payment'),
+                'note'                => sanitize_textarea_field(wp_unslash($_POST['vm_note'] ?? '')),
+            ]);
+
+            $message = $id ? 'Zusatz-Zahlung gespeichert.' : 'Zusatz-Zahlung konnte nicht gespeichert werden.';
+        }
+
+        if (isset($_POST['vm_action']) && $_POST['vm_action'] === 'delete_tenant_special_payment') {
+            check_admin_referer('vm_delete_tenant_special_payment');
+
+            $selected_id = (int) ($_POST['vm_apartment_tenant_id'] ?? $selected_id);
+            $deleted = Vermieter_Tenant_Special_Payments::delete((int) ($_POST['vm_special_payment_id'] ?? 0));
+            $message = $deleted ? 'Zusatz-Zahlung gelöscht.' : 'Zusatz-Zahlung konnte nicht gelöscht werden.';
+        }
+
         $apartment_tenants = Vermieter_Apartment_Tenants::get_all_by_user();
         $ledger_rows = $selected_id > 0
             ? Vermieter_Tenant_Payments::get_ledger_rows_by_apartment_tenant($selected_id)
             : [];
+        $special_payments = $selected_id > 0
+            ? Vermieter_Tenant_Special_Payments::get_by_apartment_tenant($selected_id)
+            : [];
 
         return vm_render_template('mietkonto.php', [
+            'message'           => $message,
             'apartment_tenants' => $apartment_tenants,
             'selected_id'       => $selected_id,
             'ledger_rows'       => $ledger_rows,
+            'special_payments'  => $special_payments,
         ]);
     }
 

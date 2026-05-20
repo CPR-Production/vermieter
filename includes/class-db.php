@@ -24,6 +24,7 @@ class Vermieter_DB {
         $table_tenancy_rent_terms           = $wpdb->prefix . 'vm_tenancy_rent_terms';
         $table_tenancy_advance_terms        = $wpdb->prefix . 'vm_tenancy_advance_terms';
         $table_tenant_payments              = $wpdb->prefix . 'vm_tenant_payments';
+        $table_tenant_special_payments      = $wpdb->prefix . 'vm_tenant_special_payments';
         $table_heating_statements           = $wpdb->prefix . 'vm_heating_statements';
         $table_heating_statement_items      = $wpdb->prefix . 'vm_heating_statement_items';
         $table_settings                     = $wpdb->prefix . 'vm_settings';
@@ -138,6 +139,25 @@ class Vermieter_DB {
             KEY user_id (user_id),
             KEY apartment_tenant_id (apartment_tenant_id),
             KEY payment_month (payment_month)
+        ) $charset_collate;";
+
+
+
+        $sql_tenant_special_payments = "CREATE TABLE $table_tenant_special_payments (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            apartment_tenant_id BIGINT UNSIGNED NOT NULL,
+            billing_year INT NOT NULL,
+            payment_date DATE NULL,
+            amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            payment_type VARCHAR(50) NOT NULL DEFAULT 'settlement_payment',
+            note TEXT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY apartment_tenant_id (apartment_tenant_id),
+            KEY billing_year (billing_year),
+            KEY payment_date (payment_date)
         ) $charset_collate;";
 
         $sql_tenants = "CREATE TABLE $table_tenants (
@@ -333,6 +353,7 @@ class Vermieter_DB {
         dbDelta($sql_tenancy_rent_terms);
         dbDelta($sql_tenancy_advance_terms);
         dbDelta($sql_tenant_payments);
+        dbDelta($sql_tenant_special_payments);
         dbDelta($sql_heating_statements);
         dbDelta($sql_heating_statement_items);
         dbDelta($sql_settings);

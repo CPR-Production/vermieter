@@ -183,8 +183,18 @@ class Vermieter_Nebenkosten_Billing
             $tenant_statements[$statement_key]['nk_advance_sum'] = round((float) $advances['nk'], 2);
             $tenant_statements[$statement_key]['hk_advance_sum'] = round((float) $advances['hk'], 2);
             $tenant_statements[$statement_key]['advance_sum'] = round($advances['nk'] + $advances['hk'], 2);
+            $tenant_statements[$statement_key]['settlement_payment_sum'] = Vermieter_Tenant_Special_Payments::get_sum_by_apartment_tenant_and_year(
+                (int) $statement['apartment_tenant_id'],
+                $year
+            );
+            // Bestandsschutz: balance bleibt wie bisher Vorauszahlungen minus Kosten.
             $tenant_statements[$statement_key]['balance'] = round(
                 $tenant_statements[$statement_key]['advance_sum'] - $tenant_statements[$statement_key]['cost_sum'],
+                2
+            );
+            // Neues Ergebnis für die Abrechnung: Kosten minus Vorauszahlungen minus bereits erfasste Ausgleichszahlungen.
+            $tenant_statements[$statement_key]['final_balance'] = round(
+                ($tenant_statements[$statement_key]['cost_sum'] - $tenant_statements[$statement_key]['advance_sum']) - $tenant_statements[$statement_key]['settlement_payment_sum'],
                 2
             );
         }
@@ -563,6 +573,8 @@ class Vermieter_Nebenkosten_Billing
             'hk_advance_sum'      => 0.0,
             'advance_sum'         => 0.0,
             'balance'             => 0.0,
+            'settlement_payment_sum' => 0.0,
+            'final_balance'        => 0.0,
         ];
     }
 
@@ -654,6 +666,8 @@ class Vermieter_Nebenkosten_Billing
                     'hk_advance_sum'       => 0.0,
                     'advance_sum'          => 0.0,
                     'balance'              => 0.0,
+                    'settlement_payment_sum' => 0.0,
+                    'final_balance'         => 0.0,
                 ];
             }
 
@@ -685,6 +699,7 @@ class Vermieter_Nebenkosten_Billing
             $grouped[$group_key]['nk_advance_sum'] += (float) ($statement['nk_advance_sum'] ?? 0);
             $grouped[$group_key]['hk_advance_sum'] += (float) ($statement['hk_advance_sum'] ?? 0);
             $grouped[$group_key]['advance_sum'] += (float) ($statement['advance_sum'] ?? 0);
+            $grouped[$group_key]['settlement_payment_sum'] += (float) ($statement['settlement_payment_sum'] ?? 0);
         }
 
         foreach ($grouped as $group_key => $group) {
@@ -700,8 +715,14 @@ class Vermieter_Nebenkosten_Billing
             $grouped[$group_key]['nk_advance_sum'] = round((float) $group['nk_advance_sum'], 2);
             $grouped[$group_key]['hk_advance_sum'] = round((float) $group['hk_advance_sum'], 2);
             $grouped[$group_key]['advance_sum'] = round((float) $group['advance_sum'], 2);
+            $grouped[$group_key]['settlement_payment_sum'] = round((float) $group['settlement_payment_sum'], 2);
+            // Bestandsschutz: balance bleibt wie bisher Vorauszahlungen minus Kosten.
             $grouped[$group_key]['balance'] = round(
                 $grouped[$group_key]['advance_sum'] - $grouped[$group_key]['cost_sum'],
+                2
+            );
+            $grouped[$group_key]['final_balance'] = round(
+                ($grouped[$group_key]['cost_sum'] - $grouped[$group_key]['advance_sum']) - $grouped[$group_key]['settlement_payment_sum'],
                 2
             );
             $grouped[$group_key]['apartment_tenant_ids'] = array_values(array_unique($group['apartment_tenant_ids']));
