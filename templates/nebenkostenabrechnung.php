@@ -112,11 +112,10 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
 
     $vm_render_object_cost_table = function ($title, $costs, $empty_text, $sum_label) use ($vm_get_allocation_display) {
         ?>
-        <div style="margin-bottom:25px;">
+        <div class="vm-pdf-section vm-pdf-section-costs">
             <h3><?php echo esc_html($title); ?></h3>
-
             <?php if (!empty($costs)) : ?>
-                <table>
+                <table class="vm-object-cost-table">
                     <thead>
                         <tr>
                             <th>Rechnung / Position</th>
@@ -139,14 +138,12 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                 <td style="text-align:right"><?php echo esc_html($vm_get_allocation_display($cost)); ?></td>
                             </tr>
                         <?php endforeach; ?>
+                        <tr>
+                            <th colspan="2"><?php echo esc_html($sum_label); ?></th>
+                            <th style="text-align:right"><?php echo esc_html(vm_format_money($sum)); ?></th>
+                            <th></th> 
+                        </tr>
                     </tbody>
-                    <tfoot>
-                    <tr>
-                        <th colspan="2"><?php echo esc_html($sum_label); ?></th>
-                        <th style="text-align:right"><?php echo esc_html(vm_format_money($sum)); ?></th>
-                        <th></th> 
-                    </tr>
-                </tfoot>
                 </table>
             <?php else : ?>
                 <p><?php echo esc_html($empty_text); ?></p>
@@ -157,8 +154,8 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
 
     $vm_render_tenant_cost_table = function ($items, $title, $empty_text) {
         ?>
-        <h5 style="margin:16px 0 8px;"><?php echo esc_html($title); ?></h5>
-
+        <div class="vm-pdf-section vm-pdf-section-tenant-costs">
+            <h5><?php echo esc_html($title); ?></h5>
         <?php if (!empty($items)) : ?>
             <?php
             $show_time_columns = false;
@@ -176,21 +173,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                 </p>
             <?php endif; ?>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Kostenposition</th>
-                        <!-- <th>Einheit</th> -->
-                        <th>Gesamtkosten</th>
-                        <th>Verteiler / Schlüssel</th>
-                        <?php if ($show_time_columns): ?>
-                            <th>Anteil vor Zeitfaktor</th>
-                            <th>Tageanteil</th>
-                        <?php endif; ?>
-                        <th>Anteil</th>
-                    </tr>
-                </thead>
-                <tbody>
+            
                     <?php
                     $sum_total_cost = 0.0;
                     $sum_share_before_factor = 0.0;
@@ -253,7 +236,12 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         return mb_strtolower((string) $a['apartment_name']) <=> mb_strtolower((string) $b['apartment_name']);
                     });
 
+                    $apartment_index = 0;
+
                     foreach ($cost_items_by_apartment as $apartment_group) :
+                        $apartment_index++;
+                        $unit_page_class = $apartment_index > 1 ? ' vm-unit-page-break' : '';
+
                         usort($apartment_group['items'], function ($a, $b) {
                             $category_a = mb_strtolower(trim((string) ($a['category_name'] ?? '')));
                             $category_b = mb_strtolower(trim((string) ($b['category_name'] ?? '')));
@@ -266,6 +254,23 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                 <=> mb_strtolower(trim((string) ($b['cost_name'] ?? '')));
                         });
                         ?>
+           
+
+                        <div class="vm-unit-cost-block<?php echo esc_attr($unit_page_class); ?>">
+                        <table class="vm-tenant-cost-table <?php echo $show_time_columns ? 'vm-tenant-cost-table--with-time' : 'vm-tenant-cost-table--simple'; ?>">
+                            <thead>
+                                <tr>
+                                    <th>Kostenposition</th>
+                                    <th>Gesamtkosten</th>
+                                    <th>Verteiler / Schlüssel</th>
+                                    <?php if ($show_time_columns): ?>
+                                        <th>Anteil vor Zeitfaktor</th>
+                                        <th>Tageanteil</th>
+                                    <?php endif; ?>
+                                    <th>Anteil</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                         <tr style="background:#f5f5f5;">
                             <th colspan="<?php echo esc_attr($show_time_columns ? 6 : 4); ?>" style="text-align:left;">
                                 Einheit: <?php echo esc_html($apartment_group['apartment_name']); ?>
@@ -282,17 +287,16 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                 </td>
                                 <!-- <td><?php echo esc_html($item['apartment_name']); ?></td> -->
                                 <td style="text-align:right"><?php echo esc_html(vm_format_money($item['total_cost'] ?? 0)); ?></td>
-                                <td>
+                                <td style="text-align:center">
                                     <?php if (!empty($item['allocation_display'])) : ?>
                                         <?php echo esc_html($item['allocation_display']); ?>
                                     <?php else : ?>
                                         <?php echo esc_html(number_format((float)($item['tenant_value'] ?? 0), 2, ',', '.')); ?> / <?php echo esc_html(number_format((float)($item['total_value'] ?? 0), 2, ',', '.')); ?>
                                     <?php endif; ?>
                                 </td>
-
                                 <?php if ($show_time_columns): ?>
                                     <td style="text-align:right"><?php echo esc_html(vm_format_money($item['share_before_factor'] ?? 0)); ?></td>
-                                    <td>
+                                    <td style="text-align:center">
                                         <?php
                                         $occupied_days = (int) ($item['occupied_days'] ?? 0);
                                         $year_days = (int) ($item['year_days'] ?? 0);
@@ -320,8 +324,6 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                             <th style="text-align:right"><?php echo esc_html(vm_format_money($apartment_group['sum_tenant_share'])); ?></th>
                         </tr>
                     <?php endforeach; ?>
-                </tbody>
-                <tfoot>
                     <tr>
                         <th colspan="1">Summe</th>
                         <th style="text-align:right"><?php echo esc_html(vm_format_money($sum_total_cost)); ?></th>
@@ -332,11 +334,12 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         <?php endif; ?>
                         <th style="text-align:right"><?php echo esc_html(vm_format_money($sum_tenant_share)); ?></th>
                     </tr>
-                </tfoot>
+                </tbody>
             </table>
         <?php else : ?>
             <p><?php echo esc_html($empty_text); ?></p>
         <?php endif; ?>
+        </div>
         <?php
     };
 
@@ -645,7 +648,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
 
                     </div>
                 <?php endif; ?>
-                <div class="vm-tenant-statement vm-pdf-detail-page <?php echo $vm_pdf_mode ? 'vm-pdf-tenant-card' : ''; ?> <?php echo ($vm_pdf_mode && $vm_pdf_tenant_index === 'all' && (int) $tenant_index !== (int) $vm_last_visible_tenant_index) ? 'vm-pdf-page-break' : ''; ?>" style="border:1px solid #ddd; padding:15px; margin-bottom:25px;">
+                <div class="vm-tenant-statement vm-pdf-detail-page <?php echo $vm_pdf_mode ? 'vm-pdf-tenant-card' : ''; ?> <?php echo ($vm_pdf_mode && $vm_pdf_tenant_index === 'all' && (int) $tenant_index !== (int) $vm_last_visible_tenant_index) ? 'vm-pdf-page-break' : ''; ?>" style="border:1px solid #ddd; padding:5mm; margin-bottom:25px;">
                     <h4><?php echo esc_html($tenant_statement['tenant_name']); ?></h4>
 
                     <?php if (!$vm_pdf_mode) : ?>
@@ -742,64 +745,63 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         ?>
                     <?php endif; ?>
 
-                    <h5 style="margin:18px 0 8px;">Ergebnis / Vorauszahlungen</h5>
+                    <div class="vm-pdf-section vm-pdf-section-summary">
+                        <h5>Ergebnis / Vorauszahlungen</h5>
 
-                    <table class="vm-summary-table">
-                        <tbody>
-                            <!-- Nebenkosten -->
-                            <tr>
-                                <th style="text-align:left;">Nebenkosten (Übertrag)</th>
-                                <td style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_operating_sum)); ?></td>
-                            </tr>
-                            <tr>
-                                <td>abzgl. Vorauszahlungen NK</td>
-                                <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_nk_advance_sum)); ?></td>
-                            </tr>
-                            <tr class="vm-subtotal">
-                                <th style="text-align:left;">Zwischenergebnis Nebenkosten</th>
-                                <th style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_operating_balance)); ?></th>
-                            </tr>
-                            <tr><td></td><td></td></tr>
-                            <!-- Heizkosten -->
-                            <tr>
-                                <th style="text-align:left;">Heizkosten (Übertrag)</th>
-                                <td style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_heating_sum)); ?></td>
-                            </tr>
-                            <tr>
-                                <td>abzgl. Vorauszahlungen HK</td>
-                                <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_hk_advance_sum)); ?></td>
-                            </tr>
-                            <tr class="vm-subtotal">
-                                <th style="text-align:left;">Zwischenergebnis Heizkosten</th>
-                                <th style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_heating_balance)); ?></th>
-                            </tr>
-                        </tbody>
+                        <table class="vm-summary-table">
+                            <tbody>
+                                <!-- Nebenkosten -->
+                                <tr>
+                                    <th style="text-align:left;">Nebenkosten (Übertrag)</th>
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_operating_sum)); ?></td>
+                                </tr>
+                                <tr>
+                                    <td>abzgl. Vorauszahlungen NK</td>
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_nk_advance_sum)); ?></td>
+                                </tr>
+                                <tr class="vm-subtotal">
+                                    <th style="text-align:left;">Zwischenergebnis Nebenkosten</th>
+                                    <th style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_operating_balance)); ?></th>
+                                </tr>
+                                <tr><td></td><td></td></tr>
+                                <!-- Heizkosten -->
+                                <tr>
+                                    <th style="text-align:left;">Heizkosten (Übertrag)</th>
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_heating_sum)); ?></td>
+                                </tr>
+                                <tr>
+                                    <td>abzgl. Vorauszahlungen HK</td>
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_hk_advance_sum)); ?></td>
+                                </tr>
+                                <tr class="vm-subtotal">
+                                    <th style="text-align:left;">Zwischenergebnis Heizkosten</th>
+                                    <th style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_heating_balance)); ?></th>
+                                </tr>
+                                <!-- Gesamtergebnis -->
+                                <tr class="vm-total <?php echo $tenant_total_balance < 0 ? 'vm-credit' : ($tenant_total_balance > 0 ? 'vm-debit' : ''); ?>">
+                                    <th style="text-align:left;">Ergebnis gesamt</th>
+                                    <th style="text-align:right;">
+                                        <?php echo esc_html($prefix . vm_format_money($tenant_total_balance)); ?>
+                                    </th>
+                                </tr>
 
-                        <tfoot>
-                            <!-- Gesamtergebnis -->
-                            <tr class="vm-total <?php echo $tenant_total_balance < 0 ? 'vm-credit' : ($tenant_total_balance > 0 ? 'vm-debit' : ''); ?>">
-                                <th style="text-align:left;">Ergebnis gesamt</th>
-                                <th style="text-align:right;">
-                                    <?php echo esc_html($prefix . vm_format_money($tenant_total_balance)); ?>
-                                </th>
-                            </tr>
-
-                            <!-- Klartext -->
-                            <tr>
-                                <td colspan="2" style="text-align:center; font-weight:bold;">
-                                    <?php
-                                        if ($tenant_total_balance > 0) {
-                                            echo 'Nachzahlung durch den Mieter';
-                                        } elseif ($tenant_total_balance < 0) {
-                                            echo 'Guthaben für den Mieter';
-                                        } else {
-                                            echo 'Ausgeglichen – keine Nachzahlung und kein Guthaben';
-                                        }
-                                        ?>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                                <!-- Klartext -->
+                                <tr>
+                                    <td colspan="2" style="text-align:center; font-weight:bold;">
+                                        <?php
+                                            if ($tenant_total_balance > 0) {
+                                                echo 'Nachzahlung durch den Mieter';
+                                            } elseif ($tenant_total_balance < 0) {
+                                                echo 'Guthaben für den Mieter';
+                                            } else {
+                                                echo 'Ausgeglichen – keine Nachzahlung und kein Guthaben';
+                                            }
+                                            ?>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             <?php endforeach; ?>
         <?php else : ?>

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Vermieter / Nebenkostenabrechnung
 Description: Nebenkostenverwaltung für Vermieter
-Version: 0.11.3
+Version: 0.11.4
 Author: Christian Husemann
 */
 

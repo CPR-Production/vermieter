@@ -9,10 +9,6 @@
     border-collapse: collapse;
 }
 
-.vm-wrap table th {
-    white-space: nowrap;
-}
-
 .vm-pdf table th {
     white-space: nowrap;
     font-size: 10pt;
@@ -24,30 +20,94 @@
     vertical-align: top;
 }
 
-.vm-cost-table th:nth-child(1),
-.vm-cost-table td:nth-child(1) {
-    width: 48%;
+.vm-object-cost-table th:nth-child(1),
+.vm-object-cost-table td:nth-child(1) {
+    width: 38%;
+    min-width: 45mm;
 }
 
-.vm-cost-table th:nth-child(2),
-.vm-cost-table td:nth-child(2) {
-    min-width: 40mm;
-    width: 40mm;
-    text-align: right;
-}
-
-.vm-cost-table th:nth-child(3),
-.vm-cost-table td:nth-child(3) {
+.vm-object-cost-table th:nth-child(2),
+.vm-object-cost-table td:nth-child(2) {
+    width: 22%;
     min-width: 28mm;
-    width: 28mm;
+}
+
+.vm-object-cost-table th:nth-child(3),
+.vm-object-cost-table td:nth-child(3) {
+    width: 18%;
+    min-width: 24mm;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.vm-object-cost-table th:nth-child(4),
+.vm-object-cost-table td:nth-child(4) {
+    width: 22%;
+    min-width: 32mm;
     text-align: right;
 }
 
-.vm-cost-table th:nth-child(4),
-.vm-cost-table td:nth-child(4) {
-    min-width: 30mm;
-    width: 30mm;
+
+/* Mieter-Kostentabelle ohne Zeitfaktor */
+.vm-tenant-cost-table--simple th:nth-child(1),
+.vm-tenant-cost-table--simple td:nth-child(1) {
+    width: 40%;
+    min-width: 45mm;
+}
+
+.vm-tenant-cost-table--simple th:nth-child(2),
+.vm-tenant-cost-table--simple td:nth-child(2) {
+    width: 18%;
+    min-width: 24mm;
     text-align: right;
+    white-space: nowrap;
+}
+
+.vm-tenant-cost-table--simple th:nth-child(3),
+.vm-tenant-cost-table--simple td:nth-child(3) {
+    width: 24%;
+    min-width: 32mm;
+}
+
+.vm-tenant-cost-table--simple th:nth-child(4),
+.vm-tenant-cost-table--simple td:nth-child(4) {
+    width: 18%;
+    min-width: 24mm;
+    text-align: right;
+    white-space: nowrap;
+}
+
+
+/* Mieter-Kostentabelle mit Zeitfaktor */
+.vm-tenant-cost-table--with-time th:nth-child(1),
+.vm-tenant-cost-table--with-time td:nth-child(1) {
+    width: 30%;
+    min-width: 38mm;
+}
+
+.vm-tenant-cost-table--with-time th:nth-child(2),
+.vm-tenant-cost-table--with-time td:nth-child(2),
+.vm-tenant-cost-table--with-time th:nth-child(4),
+.vm-tenant-cost-table--with-time td:nth-child(4),
+.vm-tenant-cost-table--with-time th:nth-child(6),
+.vm-tenant-cost-table--with-time td:nth-child(6) {
+    width: 14%;
+    min-width: 22mm;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.vm-tenant-cost-table--with-time th:nth-child(3),
+.vm-tenant-cost-table--with-time td:nth-child(3) {
+    width: 16%;
+    min-width: 28mm;
+}
+
+.vm-tenant-cost-table--with-time th:nth-child(5),
+.vm-tenant-cost-table--with-time td:nth-child(5) {
+    width: 12%;
+    min-width: 24mm;
+    white-space: nowrap;
 }
 
 .vm-pdf-body {
@@ -174,7 +234,8 @@
     left: 0;
     right: 0;
     border-top: 1px solid #e5e7eb;
-    padding-top: 4mm;
+    /* padding-top: 4mm; */
+    padding: 5mm 5mm 5mm 5mm;
     color: #6b7280;
     font-size: 8.5pt;
 }
@@ -298,3 +359,60 @@
     .vm-pdf-body tr { page-break-inside: avoid; page-break-after: auto; }
     .vm-pdf-cover { page-break-after: always; }
 }
+
+.vm-pdf-section {
+    margin-bottom: 7mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.vm-pdf-section h3,
+.vm-pdf-section h5 {
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+.vm-pdf-section table {
+    page-break-before: avoid;
+    break-before: avoid;
+}
+
+.vm-pdf-section-costs {
+    page-break-inside: auto;
+    break-inside: auto;
+}
+
+.vm-pdf-section-costs h3 {
+    page-break-after: avoid;
+}
+
+.vm-pdf-section-tenant-costs {
+    page-break-inside: auto;
+    break-inside: auto;
+}
+
+.vm-pdf-section-summary {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.vm-object-cost-table,
+.vm-tenant-cost-table,
+.vm-summary-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.vm-table-total-row th,
+.vm-table-total-row td {
+    font-weight: bold;
+    border-top: 2px solid #222;
+    background: #f5f5f5;
+}
+
+.vm-table-total-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
