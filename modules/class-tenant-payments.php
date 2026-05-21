@@ -286,12 +286,19 @@ class Vermieter_Tenant_Payments
         return 'Offen';
     }
 
-    public static function get_open_payment_rows($until_month = null)
-    {
+    public static function get_open_payment_rows($until_month = null) {
         $rows = Vermieter_Apartment_Tenants::get_all_by_user();
         $result = [];
 
         foreach ($rows as $tenancy) {
+            // Zubehör-Einheiten wie Stellplatz/Garage/Keller erzeugen keine eigenen Soll-Mieten,
+            // wenn sie in der Wohnungsmiete enthalten sind.
+            $apartment_type_key = $tenancy->apartment_type_key ?? '';
+
+            if (in_array($apartment_type_key, ['stellplatz', 'garage', 'keller'], true)) {
+                continue;
+            }
+
             $months = self::get_months_for_tenancy($tenancy, $until_month);
 
             foreach ($months as $month) {

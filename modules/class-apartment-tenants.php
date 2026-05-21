@@ -98,6 +98,7 @@ class Vermieter_Apartment_Tenants {
                     at.*,
                     a.name AS apartment_name,
                     a.property_id,
+                    a.type_key AS apartment_type_key,
                     p.name AS property_name,
                     t.salutation,
                     t.first_name,
