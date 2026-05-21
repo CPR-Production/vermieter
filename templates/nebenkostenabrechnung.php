@@ -666,8 +666,8 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                     <?php endif; ?>
 
                     <p>
-                        <strong>Eingezogen am:</strong> <?php echo esc_html($tenant_statement['move_in_date'] ?: '—'); ?><br>
-                        <strong>Ausgezogen am:</strong> <?php echo esc_html($tenant_statement['move_out_date'] ?: '—'); ?>
+                        <strong>Eingezogen am:</strong> <?php echo esc_html(vm_format_date($tenant_statement['move_in_date']) ?: '—'); ?><br>
+                        <strong>Ausgezogen am:</strong> <?php echo esc_html(vm_format_date($tenant_statement['move_out_date']) ?: '—'); ?>
                     </p>
 
                     <?php
