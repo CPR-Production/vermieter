@@ -760,7 +760,23 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                     <td style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_operating_sum)); ?></td>
                                 </tr>
                                 <tr>
-                                    <td>abzgl. Vorauszahlungen NK</td>
+                                    <td>
+                                        abzgl. Vorauszahlungen NK
+                                        <?php if (!empty($tenant_statement['nk_advance_lines'])) : ?>
+                                            <br>
+                                            <small>
+                                                <?php foreach ($tenant_statement['nk_advance_lines'] as $line) : ?>
+                                                    <?php
+                                                    echo esc_html(
+                                                        (int) $line['months'] . ' × ' .
+                                                        vm_format_money((float) $line['amount']) . ' = ' .
+                                                        vm_format_money((float) $line['sum'])
+                                                    );
+                                                    ?><br>
+                                                <?php endforeach; ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
                                     <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_nk_advance_sum)); ?></td>
                                 </tr>
                                 <tr class="vm-subtotal">
@@ -774,7 +790,23 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                                     <td style="text-align:right;"><?php echo esc_html(vm_format_money($tenant_heating_sum)); ?></td>
                                 </tr>
                                 <tr>
-                                    <td>abzgl. Vorauszahlungen HK</td>
+                                    <td>
+                                        abzgl. Vorauszahlungen HK
+                                        <?php if (!empty($tenant_statement['hk_advance_lines'])) : ?>
+                                            <br>
+                                            <small>
+                                                <?php foreach ($tenant_statement['hk_advance_lines'] as $line) : ?>
+                                                    <?php
+                                                    echo esc_html(
+                                                        (int) $line['months'] . ' × ' .
+                                                        vm_format_money((float) $line['amount']) . ' = ' .
+                                                        vm_format_money((float) $line['sum'])
+                                                    );
+                                                    ?><br>
+                                                <?php endforeach; ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
                                     <td style="text-align:right;"><?php echo esc_html(vm_format_money(-$tenant_hk_advance_sum)); ?></td>
                                 </tr>
                                 <tr class="vm-subtotal">

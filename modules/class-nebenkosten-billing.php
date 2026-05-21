@@ -183,6 +183,8 @@ class Vermieter_Nebenkosten_Billing
             $tenant_statements[$statement_key]['nk_advance_sum'] = round((float) $advances['nk'], 2);
             $tenant_statements[$statement_key]['hk_advance_sum'] = round((float) $advances['hk'], 2);
             $tenant_statements[$statement_key]['advance_sum'] = round($advances['nk'] + $advances['hk'], 2);
+            $tenant_statements[$statement_key]['nk_advance_lines'] = $advances['nk_lines'] ?? [];
+            $tenant_statements[$statement_key]['hk_advance_lines'] = $advances['hk_lines'] ?? [];
             $tenant_statements[$statement_key]['settlement_payment_sum'] = Vermieter_Tenant_Special_Payments::get_sum_by_apartment_tenant_and_year(
                 (int) $statement['apartment_tenant_id'],
                 $year
@@ -280,38 +282,20 @@ class Vermieter_Nebenkosten_Billing
         $time_data = self::get_tenant_time_data($apartment_tenant, $year);
         return (float) $time_data['factor'];
     }
-/* 
-    public static function get_tenant_year_factor($apartment_tenant, $year){
+
+    public static function get_advances_for_year($apartment_tenant_id, $year){
         $year_start = $year . '-01-01';
-        $year_end = $year . '-12-31';
-
-        $occupancy_start = max($year_start, $apartment_tenant->move_in_date);
-        $occupancy_end = !empty($apartment_tenant->move_out_date)
-            ? min($year_end, $apartment_tenant->move_out_date)
-            : $year_end;
-
-        if ($occupancy_end < $occupancy_start) {
-            return 0;
-        }
-
-        $start = new DateTime($occupancy_start);
-        $end = new DateTime($occupancy_end);
-        $occupied_days = (int) $start->diff($end)->days + 1;
-
-        $year_days = self::is_leap_year($year) ? 366 : 365;
-
-        return $occupied_days / $year_days;
-    }
- */
-    public static function get_advances_for_year($apartment_tenant_id, $year)
-    {
-        $year_start = $year . '-01-01';
-        $year_end = $year . '-12-31';
+        $year_end   = $year . '-12-31';
 
         $tenancy = self::get_apartment_tenant($apartment_tenant_id);
 
         if (!$tenancy) {
-            return ['nk' => 0.0, 'hk' => 0.0];
+            return [
+                'nk' => 0.0,
+                'hk' => 0.0,
+                'nk_lines' => [],
+                'hk_lines' => [],
+            ];
         }
 
         $months = Vermieter_Tenant_Payments::get_months_for_tenancy($tenancy, $year_end);
@@ -319,24 +303,58 @@ class Vermieter_Nebenkosten_Billing
         $nk_sum = 0.0;
         $hk_sum = 0.0;
 
+        $nk_groups = [];
+        $hk_groups = [];
+
         foreach ($months as $month) {
             if ($month < $year_start || $month > $year_end) {
                 continue;
             }
 
             $target = Vermieter_Tenant_Payments::get_monthly_target_prorated($tenancy, $month);
-            $nk_sum += (float) ($target['nk_advance'] ?? 0);
-            $hk_sum += (float) ($target['hk_advance'] ?? 0);
+
+            $nk = round((float) ($target['nk_advance'] ?? 0), 2);
+            $hk = round((float) ($target['hk_advance'] ?? 0), 2);
+
+            $nk_sum += $nk;
+            $hk_sum += $hk;
+
+            if ($nk != 0.0) {
+                $key = number_format($nk, 2, '.', '');
+                if (!isset($nk_groups[$key])) {
+                    $nk_groups[$key] = [
+                        'months' => 0,
+                        'amount' => $nk,
+                        'sum'    => 0.0,
+                    ];
+                }
+                $nk_groups[$key]['months']++;
+                $nk_groups[$key]['sum'] += $nk;
+            }
+
+            if ($hk != 0.0) {
+                $key = number_format($hk, 2, '.', '');
+                if (!isset($hk_groups[$key])) {
+                    $hk_groups[$key] = [
+                        'months' => 0,
+                        'amount' => $hk,
+                        'sum'    => 0.0,
+                    ];
+                }
+                $hk_groups[$key]['months']++;
+                $hk_groups[$key]['sum'] += $hk;
+            }
         }
 
         return [
             'nk' => round($nk_sum, 2),
             'hk' => round($hk_sum, 2),
+            'nk_lines' => array_values($nk_groups),
+            'hk_lines' => array_values($hk_groups),
         ];
     }
 
-    public static function get_total_living_space($property_id, $applies_to_type_key = 'alle')
-    {
+    public static function get_total_living_space($property_id, $applies_to_type_key = 'alle'){
         $apartments = Vermieter_Apartments::get_by_property((int) $property_id);
 
         if (empty($apartments)) {
@@ -356,8 +374,7 @@ class Vermieter_Nebenkosten_Billing
         return round($total, 2);
     }
 
-    public static function get_total_persons($property_id, $applies_to_type_key = 'alle')
-    {
+    public static function get_total_persons($property_id, $applies_to_type_key = 'alle'){
         $apartments = Vermieter_Apartments::get_by_property((int) $property_id);
 
         if (empty($apartments)) {
@@ -377,8 +394,7 @@ class Vermieter_Nebenkosten_Billing
         return round($total, 2);
     }
 
-    public static function get_distribution_key_total($property_distribution_key_id, $eligible_apartment_ids = [])
-    {
+    public static function get_distribution_key_total($property_distribution_key_id, $eligible_apartment_ids = []){
         $values = Vermieter_Apartment_Distribution_Values::get_values_by_property_distribution_key(
             (int) $property_distribution_key_id
         );
@@ -417,17 +433,11 @@ class Vermieter_Nebenkosten_Billing
                 2
             );
         }
-/*         error_log(
-            'FIXED TOTAL DEBUG | apartment_id=' . $apartment_id .
-            ' | value=' . $value .
-            ' | fixed_total=' . $fixed_total .
-            ' | cost_amount=' . $cost_amount .
-            ' | result=' . $shares[$apartment_id]
-        ); */
+
         return $shares;
     }
-    protected static function distribute_by_basis($basis_values, $cost_amount)
-    {
+
+    protected static function distribute_by_basis($basis_values, $cost_amount){
         $shares = [];
         $sum_basis = array_sum($basis_values);
 
@@ -488,8 +498,7 @@ class Vermieter_Nebenkosten_Billing
     }
 
 
-    protected static function get_tenant_cost_period_time_data($apartment_tenant, $cost, $year)
-    {
+    protected static function get_tenant_cost_period_time_data($apartment_tenant, $cost, $year){
         $year_start = $year . '-01-01';
         $year_end = $year . '-12-31';
 
@@ -532,8 +541,7 @@ class Vermieter_Nebenkosten_Billing
         ];
     }
 
-    protected static function get_inclusive_date_diff_days($start_date, $end_date)
-    {
+    protected static function get_inclusive_date_diff_days($start_date, $end_date){
         if (empty($start_date) || empty($end_date) || $end_date < $start_date) {
             return 0;
         }
@@ -547,8 +555,7 @@ class Vermieter_Nebenkosten_Billing
         }
     }
 
-    protected static function create_empty_statement($apartment_tenant, $property_id, $year)
-    {
+    protected static function create_empty_statement($apartment_tenant, $property_id, $year){
         return [
             'property_id'         => (int) $property_id,
             'year'                => (int) $year,
@@ -575,16 +582,16 @@ class Vermieter_Nebenkosten_Billing
             'balance'             => 0.0,
             'settlement_payment_sum' => 0.0,
             'final_balance'        => 0.0,
+            'nk_advance_lines'    => [],
+            'hk_advance_lines'    => [],
         ];
     }
 
-    protected static function get_statement_key($apartment_tenant)
-    {
+    protected static function get_statement_key($apartment_tenant){
         return 'tenancy_' . (int) $apartment_tenant->id;
     }
 
-    protected static function get_apartment_tenant($apartment_tenant_id)
-    {
+    protected static function get_apartment_tenant($apartment_tenant_id){
         global $wpdb;
 
         $table_links = $wpdb->prefix . 'vm_apartment_tenants';
@@ -615,8 +622,7 @@ class Vermieter_Nebenkosten_Billing
         );
     }
 
-    protected static function find_apartment_name($apartments, $apartment_id)
-    {
+    protected static function find_apartment_name($apartments, $apartment_id){
         foreach ($apartments as $apartment) {
             if ((int) $apartment->id === (int) $apartment_id) {
                 return $apartment->name ?? '';
@@ -626,13 +632,11 @@ class Vermieter_Nebenkosten_Billing
         return '';
     }
 
-    protected static function is_leap_year($year)
-    {
+    protected static function is_leap_year($year){
         return (($year % 4 === 0) && ($year % 100 !== 0)) || ($year % 400 === 0);
     }
 
-    public static function build_tenant_statement_grouped_by_tenant($property_id, $year)
-    {
+    public static function build_tenant_statement_grouped_by_tenant($property_id, $year){
         $statements = self::build_tenant_statement($property_id, $year);
 
         if (empty($statements)) {
@@ -665,6 +669,8 @@ class Vermieter_Nebenkosten_Billing
                     'nk_advance_sum'       => 0.0,
                     'hk_advance_sum'       => 0.0,
                     'advance_sum'          => 0.0,
+                    'nk_advance_lines'     => [],
+                    'hk_advance_lines'     => [],
                     'balance'              => 0.0,
                     'settlement_payment_sum' => 0.0,
                     'final_balance'         => 0.0,
@@ -699,6 +705,15 @@ class Vermieter_Nebenkosten_Billing
             $grouped[$group_key]['nk_advance_sum'] += (float) ($statement['nk_advance_sum'] ?? 0);
             $grouped[$group_key]['hk_advance_sum'] += (float) ($statement['hk_advance_sum'] ?? 0);
             $grouped[$group_key]['advance_sum'] += (float) ($statement['advance_sum'] ?? 0);
+            $grouped[$group_key]['nk_advance_lines'] = array_merge(
+            $grouped[$group_key]['nk_advance_lines'],
+                $statement['nk_advance_lines'] ?? []
+            );
+
+            $grouped[$group_key]['hk_advance_lines'] = array_merge(
+                $grouped[$group_key]['hk_advance_lines'],
+                $statement['hk_advance_lines'] ?? []
+            );
             $grouped[$group_key]['settlement_payment_sum'] += (float) ($statement['settlement_payment_sum'] ?? 0);
         }
 
@@ -731,8 +746,7 @@ class Vermieter_Nebenkosten_Billing
         return array_values($grouped);
     }
 
-    public static function build_property_statement($property_id, $year)
-    {
+    public static function build_property_statement($property_id, $year){
         $property_id = (int) $property_id;
         $year = (int) $year;
 
@@ -777,8 +791,7 @@ class Vermieter_Nebenkosten_Billing
     }
 
 
-    protected static function sort_cost_items_by_category(&$items)
-    {
+    protected static function sort_cost_items_by_category(&$items){
         if (empty($items) || !is_array($items)) {
             return;
         }
@@ -812,8 +825,7 @@ class Vermieter_Nebenkosten_Billing
         });
     }
 
-    protected static function merge_cost_items($items)
-    {
+    protected static function merge_cost_items($items){
         $merged = [];
 
         foreach ($items as $item) {
