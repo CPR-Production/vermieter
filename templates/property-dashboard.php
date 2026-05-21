@@ -137,7 +137,7 @@ $vm_format_date = function ($date) {
     </div>
 
     <div style="border:1px solid #ddd; padding:15px; margin-bottom:20px;">
-    <h3><i class="fa-solid fa-file-invoice-dollar"></i>Nebenkosten-Vollständigkeit</h3>
+    <h3><i class="fa-solid fa-file-invoice-dollar"></i>Nebenkosten erfasst</h3>
 
     <?php if (!empty($apartments) && !empty($all_cost_years)) : ?>
         <table>

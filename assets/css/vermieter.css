@@ -39,14 +39,14 @@
 }
 
 /* Zahlen rechtsbündig */
-.vm-wrap table td:nth-child(5),
+/* .vm-wrap table td:nth-child(5),
 .vm-wrap table th:nth-child(6),
 .vm-wrap table td:nth-child(6),
 .vm-wrap table td:nth-child(7),
 .vm-wrap table td:nth-child(8),
 .vm-wrap table td:nth-child(9) {
     text-align: right;
-}
+} */
 
 /* Inputs in Tabellen */
 .vm-wrap table input[type="text"],
