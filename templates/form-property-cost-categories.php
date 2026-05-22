@@ -60,7 +60,7 @@
                 <option value="wohnflaeche" <?php selected($edit_item->allocation_type ?? 'wohnflaeche', 'wohnflaeche'); ?>>Wohnfläche</option>
                 <option value="personen" <?php selected($edit_item->allocation_type ?? '', 'personen'); ?>>Personen</option>
                 <option value="distribution_key" <?php selected($edit_item->allocation_type ?? '', 'distribution_key'); ?>>Verteilerschlüssel</option>
-                <option value="brunata_statement" <?php selected($edit_item->allocation_type ?? '', 'brunata_statement'); ?>>Lt. Abrechnung Brunata</option>
+                <option value="brunata_statement" <?php selected($edit_item->allocation_type ?? '', 'brunata_statement'); ?>>Lt. Abrechnung / Einzelabrechnung</option>
             </select>
         </p>
 
@@ -374,7 +374,7 @@
                         { value: 'wohnflaeche', label: 'Wohnfläche' },
                         { value: 'personen', label: 'Personen' },
                         { value: 'distribution_key', label: 'Verteilerschlüssel' },
-                        { value: 'brunata_statement', label: 'Lt. Abrechnung Brunata' }
+                        { value: 'brunata_statement', label: 'Lt. Abrechnung / Einzelabrechnung' }
                     ];
                     const allocationSelect = createSelect('vm_allocation_type', allocationOptions, allocationType);
                     allocationSelect.required = true;

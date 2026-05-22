@@ -57,6 +57,8 @@
                         <th><i class="fa-solid fa-layer-group"></i> Kategorie</th>
                         <th>Bezeichnung</th>
                         <th><i class="fa-solid fa-euro-sign"></i> Betrag</th>
+                        <th>Steuer-Ausweis</th>
+                        <th>davon Lohn/Arbeitskosten</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -84,11 +86,21 @@
                                         placeholder="0,00"
                                     >
                                 </td>
+                                <td>
+                                    <select name="vm_rows[<?php echo esc_attr($index); ?>][tax_deductible_type]">
+                                        <option value="none">—</option>
+                                        <option value="haushaltsnah" <?php selected(stripos((string) $category->name, 'Hausmeister') !== false || stripos((string) $category->name, 'Hausreinigung') !== false); ?>>haushaltsnahe Dienstleistung</option>
+                                        <option value="handwerker">Handwerkerleistung</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" name="vm_rows[<?php echo esc_attr($index); ?>][tax_deductible_amount]" placeholder="0,00" style="width:110px;">
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
                         <tr>
-                            <td colspan="3">Für dieses Objekt sind noch keine Kategorien zugeordnet.</td>
+                            <td colspan="5">Für dieses Objekt sind noch keine Kategorien zugeordnet.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -99,10 +111,10 @@
             </p>
 
             <?php if (!empty($brunata_entry_rows)) : ?>
-                <h3>Heizkosten laut Brunata</h3>
-                <p><small>Diese Positionen werden als Nebenkosten mit dem Schlüssel „Lt. Abrechnung Brunata“ gespeichert. Es werden nur Wohnungen angezeigt; Stellplätze, Garagen und Keller bleiben außen vor. Bei Mieterwechsel trägst du Gesamtbetrag und Teilbeträge ein – sobald genau ein Feld leer ist, berechnet JavaScript den fehlenden Wert automatisch.</small></p>
+                <h3>Direkt zugeordnete Kosten laut Einzelabrechnung</h3>
+                <p><small>Diese Positionen werden als fertige Nutzungs-/Mieterbeträge gespeichert, z. B. Heizkosten laut Messdienst oder Sonderkosten wie eine Zwischenablesung. Es werden nur Wohnungen angezeigt; Stellplätze, Garagen und Keller bleiben außen vor. Bei Mieterwechsel trägst du den Gesamtbetrag und die Teilbeträge ein – sobald genau ein Feld leer ist, berechnet JavaScript den fehlenden Wert automatisch.</small></p>
 
-                <table class="widefat striped vm-table" id="vm-brunata-entry-table">
+                <table class="widefat striped vm-table" id="vm-direct-statement-entry-table">
                     <thead>
                         <tr>
                             <th>Kategorie</th>
@@ -346,6 +358,14 @@
                         <td>
                             <input type="text" name="vm_rows[${rowIndex}][betrag]" placeholder="0,00">
                         </td>
+                        <td>
+                            <select name="vm_rows[${rowIndex}][tax_deductible_type]">
+                                <option value="none">—</option>
+                                <option value="haushaltsnah">haushaltsnahe Dienstleistung</option>
+                                <option value="handwerker">Handwerkerleistung</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="vm_rows[${rowIndex}][tax_deductible_amount]" placeholder="0,00" style="width:110px;"></td>
                     `;
                     tableBody.appendChild(tr);
                     rowIndex++;
@@ -389,6 +409,7 @@
                         <th>Kategorie</th>
                         <th>Rechnung / Bezeichnung</th>
                         <th>Betrag</th>
+                        <th>Steuer-Ausweis</th>
                         <th>Rechnungsdatum</th>
                         <th>Zeitraum</th>
                         <th>Wiederkehrend</th>
@@ -422,6 +443,15 @@
                                     </td>
                                     <td>
                                         <input type="text" name="vm_betrag" value="<?php echo esc_attr(number_format((float) $cost->betrag, 2, ',', '')); ?>" required style="width:120px;">
+                                    </td>
+                                    <td>
+                                        <select name="vm_tax_deductible_type">
+                                            <option value="none" <?php selected(($cost->tax_deductible_type ?? 'none'), 'none'); ?>>—</option>
+                                            <option value="haushaltsnah" <?php selected(($cost->tax_deductible_type ?? ''), 'haushaltsnah'); ?>>haushaltsnah</option>
+                                            <option value="handwerker" <?php selected(($cost->tax_deductible_type ?? ''), 'handwerker'); ?>>Handwerker</option>
+                                        </select><br>
+                                        <small>Lohn/Arbeit:</small><br>
+                                        <input type="text" name="vm_tax_deductible_amount" value="<?php echo esc_attr(number_format((float) ($cost->tax_deductible_amount ?? 0), 2, ',', '')); ?>" style="width:110px;">
                                     </td>
                                     <td>
                                         <input type="date" name="vm_invoice_date" value="<?php echo esc_attr($cost->invoice_date); ?>" required>
@@ -458,10 +488,19 @@
                                 data-period-end="<?php echo esc_attr($cost->period_end); ?>"
                                 data-period-year="<?php echo esc_attr((int) $cost->period_year); ?>"
                                 data-is-recurring="<?php echo !empty($cost->is_recurring) ? '1' : '0'; ?>"
+                                data-tax-deductible-type="<?php echo esc_attr($cost->tax_deductible_type ?? 'none'); ?>"
+                                data-tax-deductible-amount="<?php echo esc_attr(number_format((float) ($cost->tax_deductible_amount ?? 0), 2, '.', '')); ?>"
                             >
                                 <td><?php echo esc_html($cost->category_name ?: '—'); ?></td>
                                 <td><?php echo esc_html($cost->name); ?></td>
                                 <td><?php echo esc_html(number_format((float) $cost->betrag, 2, ',', '.')); ?> €</td>
+                                <td><?php
+                                    $vm_tax_label = '—';
+                                    if (($cost->tax_deductible_type ?? '') === 'haushaltsnah') { $vm_tax_label = 'haushaltsnah'; }
+                                    if (($cost->tax_deductible_type ?? '') === 'handwerker') { $vm_tax_label = 'Handwerker'; }
+                                    echo esc_html($vm_tax_label);
+                                    if (!empty($cost->tax_deductible_amount)) { echo '<br><small>' . esc_html(vm_format_money($cost->tax_deductible_amount)) . '</small>'; }
+                                ?></td>
                                 <td><?php echo esc_html(vm_format_date($cost->invoice_date)); ?></td>
                                 <td>
                                     <?php echo esc_html(vm_format_date($cost->period_start)); ?><br>

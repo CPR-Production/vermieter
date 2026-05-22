@@ -31,8 +31,10 @@ class Vermieter_Costs {
                 'source_type'               => !empty($data['source_type']) ? sanitize_text_field($data['source_type']) : null,
                 'source_id'                 => !empty($data['source_id']) ? (int) $data['source_id'] : null,
                 'no_time_factor'            => !empty($data['no_time_factor']) ? 1 : 0,
+                'tax_deductible_type'       => self::sanitize_tax_deductible_type($data['tax_deductible_type'] ?? 'none'),
+                'tax_deductible_amount'     => self::parse_money($data['tax_deductible_amount'] ?? 0),
             ],
-            ['%d', '%d', '%d', '%s', '%f', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d']
+            ['%d', '%d', '%d', '%s', '%f', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%s', '%f']
         );
 
         return $inserted ? (int) $wpdb->insert_id : false;
@@ -48,7 +50,7 @@ class Vermieter_Costs {
         foreach ($rows as $row) {
             $property_cost_category_id = (int) ($row['property_cost_category_id'] ?? 0);
             $name = sanitize_text_field($row['name'] ?? '');
-            $betrag = isset($row['betrag']) ? (float) str_replace(',', '.', (string) $row['betrag']) : 0;
+            $betrag = isset($row['betrag']) ? self::parse_money($row['betrag']) : 0;
 
             if ($property_cost_category_id <= 0 || $name === '' || $betrag <= 0) {
                 continue;
@@ -63,6 +65,8 @@ class Vermieter_Costs {
                 'period_start'              => $base_data['period_start'] ?? '',
                 'period_end'                => $base_data['period_end'] ?? '',
                 'period_year'               => (int) ($base_data['period_year'] ?? 0),
+                'tax_deductible_type'       => $row['tax_deductible_type'] ?? 'none',
+                'tax_deductible_amount'     => $row['tax_deductible_amount'] ?? 0,
             ]);
 
             if ($id) {
@@ -129,12 +133,14 @@ class Vermieter_Costs {
                 'apartment_tenant_id'       => !empty($data['apartment_tenant_id']) ? (int) $data['apartment_tenant_id'] : null,
                 'calculation_mode'          => !empty($data['calculation_mode']) ? sanitize_text_field($data['calculation_mode']) : 'allocation',
                 'no_time_factor'            => !empty($data['no_time_factor']) ? 1 : 0,
+                'tax_deductible_type'       => self::sanitize_tax_deductible_type($data['tax_deductible_type'] ?? 'none'),
+                'tax_deductible_amount'     => self::parse_money($data['tax_deductible_amount'] ?? 0),
             ],
             [
                 'id'      => (int) $id,
                 'user_id' => get_current_user_id(),
             ],
-            ['%d', '%d', '%s', '%f', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d'],
+            ['%d', '%d', '%s', '%f', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%f'],
             ['%d', '%d']
         );
 
@@ -285,16 +291,28 @@ class Vermieter_Costs {
         foreach ($rows as $row) {
             $property_cost_category_id = (int) ($row['property_cost_category_id'] ?? 0);
             $apartment_id = (int) ($row['apartment_id'] ?? 0);
-            $category_name = sanitize_text_field($row['category_name'] ?? 'Heizkosten');
+            $category_name = sanitize_text_field($row['category_name'] ?? 'Sonderkosten');
             $usage_rows = $row['usage'] ?? [];
 
             if ($property_cost_category_id <= 0 || $apartment_id <= 0 || empty($usage_rows) || !is_array($usage_rows)) {
                 continue;
             }
 
+            $selected_category = Vermieter_Property_Cost_Categories::get($property_cost_category_id);
+
+            // Sicherheitsnetz: Direkt zugeordnete Einzelabrechnungen dürfen nur auf Kategorien
+            // mit dem Verteilungstyp brunata_statement / Lt. Abrechnung gespeichert werden.
+            if (!$selected_category || (($selected_category->allocation_type ?? '') !== 'brunata_statement')) {
+                continue;
+            }
+
+            if (!empty($selected_category->name)) {
+                $category_name = sanitize_text_field($selected_category->name);
+            }
+
             foreach ($usage_rows as $usage_row) {
                 $apartment_tenant_id = (int) ($usage_row['apartment_tenant_id'] ?? 0);
-                $amount = isset($usage_row['amount']) ? (float) str_replace(',', '.', (string) $usage_row['amount']) : 0.0;
+                $amount = isset($usage_row['amount']) ? self::parse_money($usage_row['amount']) : 0.0;
                 $label = sanitize_text_field($usage_row['label'] ?? '');
                 $usage_start = sanitize_text_field($usage_row['start_date'] ?? ($base_data['period_start'] ?? ''));
                 $usage_end = sanitize_text_field($usage_row['end_date'] ?? ($base_data['period_end'] ?? ''));
@@ -304,7 +322,7 @@ class Vermieter_Costs {
                 }
 
                 $name_parts = [];
-                $name_parts[] = 'Jahresabrechnung ' . (int) ($base_data['period_year'] ?? 0);
+                $name_parts[] = 'Abrechnung ' . (int) ($base_data['period_year'] ?? 0);
                 if ($category_name !== '') {
                     $name_parts[] = $category_name;
                 }
@@ -335,6 +353,28 @@ class Vermieter_Costs {
         }
 
         return $count;
+    }
+
+    protected static function parse_money($value) {
+        if (is_numeric($value)) {
+            return round((float) $value, 2);
+        }
+
+        $value = trim((string) $value);
+        if ($value === '') {
+            return 0.0;
+        }
+
+        $value = str_replace([' ', '.'], ['', ''], $value);
+        $value = str_replace(',', '.', $value);
+
+        return round((float) $value, 2);
+    }
+
+    protected static function sanitize_tax_deductible_type($value) {
+        $value = sanitize_text_field((string) $value);
+        $allowed = ['none', 'haushaltsnah', 'handwerker'];
+        return in_array($value, $allowed, true) ? $value : 'none';
     }
 
     public static function get_brunata_entry_rows($property_id, $year, $property_categories = []) {

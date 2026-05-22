@@ -78,7 +78,7 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
 
             switch ($category->allocation_type) {
                 case 'brunata_statement':
-                    $allocation_display = 'Lt. Abrechnung Brunata';
+                    $allocation_display = 'Lt. Abrechnung / Einzelabrechnung';
                     break;
 
                 case 'wohnflaeche':
@@ -339,6 +339,132 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
         <?php else : ?>
             <p><?php echo esc_html($empty_text); ?></p>
         <?php endif; ?>
+        </div>
+        <?php
+    };
+
+
+    $vm_render_tax_deductible_table = function ($items) {
+        $tax_rows = [];
+
+        $groups = [
+            'haushaltsnah' => 'Haushaltsnahe Dienstleistungen',
+            'handwerker'   => 'Handwerkerleistungen',
+        ];
+
+        foreach (($items ?? []) as $item) {
+            $type = $item['tax_deductible_type'] ?? 'none';
+            $tax_share = (float) ($item['tax_deductible_share'] ?? 0);
+
+            if (!in_array($type, ['haushaltsnah', 'handwerker'], true) || round($tax_share, 2) <= 0) {
+                continue;
+            }
+
+            $tax_rows[] = $item;
+        }
+
+        if (empty($tax_rows)) {
+            return;
+        }
+
+        $show_time_columns = false;
+        foreach ($tax_rows as $row) {
+            if (isset($row['occupied_days'], $row['year_days']) && (int) $row['occupied_days'] < (int) $row['year_days']) {
+                $show_time_columns = true;
+                break;
+            }
+        }
+        ?>
+        <div class="vm-pdf-section vm-pdf-section-tax-deductible">
+            <h2>Steuerlicher Ausweis nach § 35a EStG</h2>
+            <?php
+            foreach ($groups as $group_type => $group_title) {
+                $group_rows = array_filter($tax_rows, function ($row) use ($group_type) {
+                    return ($row['tax_deductible_type'] ?? '') === $group_type;
+                });
+
+                if (empty($group_rows)) {
+                    continue;
+                }
+
+                echo '<h3>' . esc_html($group_title) . '</h3>';
+
+                ?>
+                <table class="vm-pdf-table vm-pdf-table-compact">
+                    <thead>
+                        <tr>
+                            <th>Kostenart</th>
+                            <th style="text-align:right;">Gesamtkosten</th>
+                            <th>Verteiler / Schlüssel</th>
+                            <?php if ($show_time_columns): ?>
+                                <th style="text-align:right;">Anteil vor Zeitfaktor</th>
+                                <th style="text-align:right;">Tageanteil</th>
+                            <?php endif; ?>
+                            <th style="text-align:right;">davon §35a</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($group_rows as $row): ?>
+                            
+                            <tr>
+                                <td>
+                                    <?php echo esc_html($row['cost_name'] ?? ''); ?>
+                                    <?php if (!empty($row['category_name'])) : ?>
+                                        <br><small><?php echo esc_html($row['category_name']); ?></small>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['tax_deductible_amount'] ?? 0)); ?></td>
+                                <td style="text-align:center;">
+                                    <?php
+                                    if (!empty($row['allocation_display'])) {
+                                        echo esc_html($row['allocation_display']);
+                                    } else {
+                                        echo esc_html(
+                                            number_format((float) ($row['tenant_value'] ?? 0), 2, ',', '.')
+                                            . ' / ' .
+                                            number_format((float) ($row['total_value'] ?? 0), 2, ',', '.')
+                                        );
+                                    }
+                                    ?>
+                                </td>
+
+                                <?php if ($show_time_columns): ?>
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['share_before_factor'] ?? 0)); ?></td>
+                                    <td style="text-align:center;">
+                                        <?php
+                                        $occupied_days = (int) ($row['occupied_days'] ?? 0);
+                                        $year_days = (int) ($row['year_days'] ?? 0);
+                                        $tenant_factor = (float) ($row['tenant_factor'] ?? 0);
+
+                                        echo esc_html(
+                                            $occupied_days . ' / ' . $year_days . ' (' . number_format($tenant_factor, 4, ',', '.') . ')'
+                                        );
+                                        ?>
+                                    </td>
+                                <?php endif; ?>
+
+                                <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['tax_deductible_share'] ?? 0)); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Summe</th>
+                            <?php if ($show_time_columns): ?>
+                                <th></th>
+                                <th></th>
+                            <?php endif; ?>
+                            <th style="text-align:right;">
+                                <?php echo esc_html(vm_format_money(array_sum(array_column($tax_rows, 'tenant_share')))); ?>
+                            </th>
+                            <TH></TH>
+                            <th style="text-align:right;">
+                                <?php echo esc_html(vm_format_money(array_sum(array_column($tax_rows, 'tax_deductible_share')))); ?>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            <?php } ?>
         </div>
         <?php
     };
@@ -850,6 +976,10 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                             </tbody>
                         </table>
                     </div>
+                    <?php
+                    $vm_render_tax_deductible_table(array_merge($tenant_operating_items, $tenant_heating_items));
+                    ?>
+
                 </div>
             <?php endforeach; ?>
         <?php else : ?>

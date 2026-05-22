@@ -244,6 +244,8 @@ class Vermieter_DB {
             source_type VARCHAR(50) NULL,
             source_id BIGINT UNSIGNED NULL,
             no_time_factor TINYINT(1) NOT NULL DEFAULT 0,
+            tax_deductible_type VARCHAR(50) NOT NULL DEFAULT 'none',
+            tax_deductible_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY user_id (user_id),
@@ -253,7 +255,8 @@ class Vermieter_DB {
             KEY target_apartment_id (target_apartment_id),
             KEY apartment_tenant_id (apartment_tenant_id),
             KEY calculation_mode (calculation_mode),
-            KEY source_type_source_id (source_type, source_id)
+            KEY source_type_source_id (source_type, source_id),
+            KEY tax_deductible_type (tax_deductible_type)
         ) $charset_collate;";
 
         $sql_distribution_key_definitions = "CREATE TABLE $table_distribution_key_definitions (
@@ -377,6 +380,7 @@ class Vermieter_DB {
             ['name' => 'Müllabfuhr', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
             ['name' => 'Putzmaterial', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
             ['name' => 'Sonstige Wartungen', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 0],
+            ['name' => 'Zwischenablesung / Sonderkosten', 'description' => 'Direkt zugeordnete Sonderkosten je Nutzung/Mieterwechsel, z. B. Zwischenablesung', 'default_allocation_type' => 'brunata_statement', 'default_is_recurring' => 0],
             ['name' => 'Stromkosten und Wasser', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
             ['name' => 'Versicherungen', 'description' => '', 'default_allocation_type' => 'distribution_key', 'default_is_recurring' => 1],
             ['name' => 'Heizkosten', 'description' => 'Heizkosten laut Brunata-/Messdienstabrechnung', 'default_allocation_type' => 'brunata_statement', 'default_is_recurring' => 1],
@@ -429,7 +433,7 @@ class Vermieter_DB {
             ['name' => 'Wohnfläche', 'key_name' => 'wohnflaeche', 'description' => 'Verteilung nach Quadratmetern'],
             ['name' => 'Personen', 'key_name' => 'personen', 'description' => 'Verteilung nach Personenzahl'],
             ['name' => 'Verteilerschlüssel', 'key_name' => 'distribution_key', 'description' => 'Verteilung über hinterlegte Schlüsselwerte je Wohnung'],
-            ['name' => 'Lt. Abrechnung Brunata', 'key_name' => 'brunata_statement', 'description' => 'Fertige Brunata-/Messdienst-Abrechnungsbeträge je Nutzungszeitraum; keine weitere Verteilung und kein Zeitfaktor'],
+            ['name' => 'Lt. Abrechnung / Einzelabrechnung', 'key_name' => 'brunata_statement', 'description' => 'Fertige Abrechnungsbeträge je Nutzungszeitraum, z. B. Brunata/Messdienst oder Zwischenablesung; keine weitere Verteilung und kein Zeitfaktor'],
         ];
 
         foreach ($defaults as $row) {

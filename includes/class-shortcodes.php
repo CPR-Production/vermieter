@@ -52,6 +52,8 @@ class Vermieter_Shortcodes {
             'period_start'              => sanitize_text_field(wp_unslash($_POST['period_start'] ?? '')),
             'period_end'                => sanitize_text_field(wp_unslash($_POST['period_end'] ?? '')),
             'period_year'               => (int) ($_POST['period_year'] ?? 0),
+            'tax_deductible_type'       => sanitize_text_field(wp_unslash($_POST['tax_deductible_type'] ?? 'none')),
+            'tax_deductible_amount'     => isset($_POST['tax_deductible_amount']) ? (float) str_replace(',', '.', wp_unslash($_POST['tax_deductible_amount'])) : 0,
         ]);
 
         if (!$result) {
@@ -83,6 +85,8 @@ class Vermieter_Shortcodes {
                 'period_year'               => (int) $item->period_year,
                 'is_recurring'              => !empty($item->is_recurring) ? 1 : 0,
                 'is_recurring_label'        => !empty($item->is_recurring) ? 'Ja' : 'Nein',
+                'tax_deductible_type'       => (string) ($item->tax_deductible_type ?? 'none'),
+                'tax_deductible_amount'     => (float) ($item->tax_deductible_amount ?? 0),
             ],
         ]);
     }
@@ -838,6 +842,8 @@ class Vermieter_Shortcodes {
                 'period_start'              => $period['start'],
                 'period_end'                => $period['end'],
                 'period_year'               => $selected_year,
+                'tax_deductible_type'       => sanitize_text_field(wp_unslash($_POST['vm_tax_deductible_type'] ?? 'none')),
+                'tax_deductible_amount'     => vm_post_decimal('vm_tax_deductible_amount'),
             ]);
 
             $message = $result ? 'Kostenposition aktualisiert.' : 'Kostenposition konnte nicht aktualisiert werden.';
@@ -1231,6 +1237,8 @@ class Vermieter_Shortcodes {
                 'period_start'              => $period['start'],
                 'period_end'                => $period['end'],
                 'period_year'               => $selected_year,
+                'tax_deductible_type'       => sanitize_text_field(wp_unslash($_POST['vm_tax_deductible_type'] ?? 'none')),
+                'tax_deductible_amount'     => vm_post_decimal('vm_tax_deductible_amount'),
             ]);
 
             $message = $id ? 'Kosten gespeichert.' : 'Kosten konnten nicht gespeichert werden.';
@@ -1266,6 +1274,8 @@ class Vermieter_Shortcodes {
                 'period_start'              => $period['start'],
                 'period_end'                => $period['end'],
                 'period_year'               => $selected_year,
+                'tax_deductible_type'       => sanitize_text_field(wp_unslash($_POST['vm_tax_deductible_type'] ?? 'none')),
+                'tax_deductible_amount'     => vm_post_decimal('vm_tax_deductible_amount'),
             ]);
 
             $message = $result ? 'Kosten aktualisiert.' : 'Kosten konnten nicht aktualisiert werden.';

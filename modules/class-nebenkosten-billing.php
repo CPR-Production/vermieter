@@ -17,6 +17,18 @@ class Vermieter_Nebenkosten_Billing
         $apartments = Vermieter_Apartments::get_by_property($property_id);
         $brunata_totals_by_category = self::get_brunata_totals_by_category($costs);
 
+error_log('VM DEBUG §35a RAW COSTS 1: ' . print_r(array_map(function($c) {
+    return [
+        'id' => $c->id ?? null,
+        'name' => $c->name ?? null,
+        'betrag' => $c->betrag ?? null,
+        'tax_deductible_type' => $c->tax_deductible_type ?? null,
+        'tax_deductible_amount' => $c->tax_deductible_amount ?? null,
+        'property_cost_category_id' => $c->property_cost_category_id ?? null,
+    ];
+}, $costs), true));
+
+
         if (empty($apartments)) {
             return [];
         }
@@ -151,13 +163,29 @@ class Vermieter_Nebenkosten_Billing
 
                     $category_name = trim((string) ($property_cost_category->name ?? ''));
                     $display_cost_name = trim((string) ($cost->name ?? ''));
+                    $tax_deductible_type = sanitize_text_field((string) ($cost->tax_deductible_type ?? 'none'));
+                    $tax_deductible_amount = round((float) ($cost->tax_deductible_amount ?? 0), 2);
+                    $tax_deductible_share = 0.0;
+                    if (in_array($tax_deductible_type, ['haushaltsnah', 'handwerker'], true) && $tax_deductible_amount > 0 && (float) ($cost->betrag ?? 0) > 0) {
+                        $tax_deductible_share = round($tax_deductible_amount * ((float) $tenant_share / (float) $cost->betrag), 2);
+                    }
+
+                    error_log('VM DEBUG §35a CALC: ' . print_r([
+    'cost_id' => $cost->id ?? null,
+    'name' => $cost->name ?? null,
+    'betrag' => $cost->betrag ?? null,
+    'tenant_share' => $tenant_share ?? null,
+    'tax_deductible_type' => $tax_deductible_type,
+    'tax_deductible_amount' => $tax_deductible_amount,
+    'tax_deductible_share' => $tax_deductible_share,
+], true));
 
                     $tenant_statements[$statement_key]['cost_items'][] = [
                         'cost_id'               => (int) $cost->id,
                         'cost_name'             => $display_cost_name,
                         'category_name'         => $category_name,
                         'allocation_type'       => $property_cost_category->allocation_type ?? '',
-                        'allocation_display'    => (($property_cost_category->allocation_type ?? '') === 'brunata_statement') ? 'Lt. Abrechnung Brunata' : '',
+                        'allocation_display'    => (($property_cost_category->allocation_type ?? '') === 'brunata_statement') ? 'Lt. Abrechnung / Einzelabrechnung' : '',
                         'is_brunata_statement'  => (($property_cost_category->allocation_type ?? '') === 'brunata_statement'),
                         'apartment_id'          => (int) $apartment_id,
                         'apartment_name'        => self::find_apartment_name($eligible_apartments, $apartment_id),
@@ -169,6 +197,9 @@ class Vermieter_Nebenkosten_Billing
                         'year_days'             => (int) $year_days,
                         'tenant_factor'         => round((float) $tenant_factor, 6),
                         'tenant_share'          => round((float) $tenant_share, 2),
+                        'tax_deductible_type'  => $tax_deductible_type,
+                        'tax_deductible_amount'=> $tax_deductible_amount,
+                        'tax_deductible_share' => $tax_deductible_share,
                     ];
 
                     $tenant_statements[$statement_key]['cost_sum'] += round((float) $tenant_share, 2);
@@ -758,6 +789,20 @@ class Vermieter_Nebenkosten_Billing
         $costs = Vermieter_Costs::get_by_property_and_year($property_id, $year);
         $apartments = Vermieter_Apartments::get_by_property($property_id);
 
+
+error_log('VM DEBUG §35a RAW COSTS: ' . print_r(array_map(function($c) {
+    return [
+        'id' => $c->id ?? null,
+        'name' => $c->name ?? null,
+        'betrag' => $c->betrag ?? null,
+        'tax_deductible_type' => $c->tax_deductible_type ?? null,
+        'tax_deductible_amount' => $c->tax_deductible_amount ?? null,
+        'property_cost_category_id' => $c->property_cost_category_id ?? null,
+    ];
+}, $costs), true));
+
+
+
         $tenant_statements = self::build_tenant_statement($property_id, $year);
         $grouped_tenant_statements = self::build_tenant_statement_grouped_by_tenant($property_id, $year);
 
@@ -855,14 +900,19 @@ class Vermieter_Nebenkosten_Billing
                     'year_days'           => (int) ($item['year_days'] ?? 0),
                     'tenant_factor'       => round((float) ($item['tenant_factor'] ?? 0), 6),
                     'tenant_share'        => 0.0,
+                    'tax_deductible_type'   => $item['tax_deductible_type'] ?? 'none',
+                    'tax_deductible_amount' => round((float) ($item['tax_deductible_amount'] ?? 0), 2),
+                    'tax_deductible_share'  => 0.0,
                 ];
             }
 
             $merged[$key]['tenant_share'] += (float) ($item['tenant_share'] ?? 0);
+            $merged[$key]['tax_deductible_share'] += (float) ($item['tax_deductible_share'] ?? 0);
         }
 
         foreach ($merged as $key => $item) {
             $merged[$key]['tenant_share'] = round((float) $item['tenant_share'], 2);
+            $merged[$key]['tax_deductible_share'] = round((float) $item['tax_deductible_share'], 2);
         }
 
         return array_values($merged);

@@ -60,6 +60,20 @@
         </p>
 
         <p>
+            <label for="vm_tax_deductible_type">Steuerlicher Ausweis</label><br>
+            <select name="vm_tax_deductible_type" id="vm_tax_deductible_type">
+                <option value="none">nicht ausweisen</option>
+                <option value="haushaltsnah">haushaltsnahe Dienstleistung</option>
+                <option value="handwerker">Handwerkerleistung</option>
+            </select>
+        </p>
+
+        <p>
+            <label for="vm_tax_deductible_amount">davon Lohn-/Arbeitskosten</label><br>
+            <input type="text" name="vm_tax_deductible_amount" id="vm_tax_deductible_amount" placeholder="z. B. 250,00">
+        </p>
+
+        <p>
             <label for="vm_invoice_date">Rechnungsdatum</label><br>
             <input type="date" name="vm_invoice_date" id="vm_invoice_date" required>
         </p>

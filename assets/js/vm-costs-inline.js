@@ -62,6 +62,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         <input type="text" name="betrag" value="${escapeHtml((row.dataset.betrag || '0').replace('.', ','))}" required style="width:100%;">
                     </p>
                     <p>
+                        <label>Steuerlicher Ausweis</label><br>
+                        <select name="tax_deductible_type" style="width:100%;">
+                            <option value="none" ${row.dataset.taxDeductibleType === 'none' || !row.dataset.taxDeductibleType ? 'selected' : ''}>nicht ausweisen</option>
+                            <option value="haushaltsnah" ${row.dataset.taxDeductibleType === 'haushaltsnah' ? 'selected' : ''}>haushaltsnah</option>
+                            <option value="handwerker" ${row.dataset.taxDeductibleType === 'handwerker' ? 'selected' : ''}>Handwerker</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label>davon Lohn/Arbeit</label><br>
+                        <input type="text" name="tax_deductible_amount" value="${escapeHtml((row.dataset.taxDeductibleAmount || '0').replace('.', ','))}" style="width:100%;">
+                    </p>
+                    <p>
                         <label>Rechnungsdatum</label><br>
                         <input type="date" name="invoice_date" value="${escapeHtml(row.dataset.invoiceDate || '')}" required style="width:100%;">
                     </p>
@@ -104,13 +116,19 @@ document.addEventListener('DOMContentLoaded', function () {
         row.dataset.periodEnd = item.period_end || '';
         row.dataset.periodYear = String(item.period_year || '');
         row.dataset.isRecurring = item.is_recurring ? '1' : '0';
+        row.dataset.taxDeductibleType = item.tax_deductible_type || 'none';
+        row.dataset.taxDeductibleAmount = String(item.tax_deductible_amount || 0);
 
         cells[0].textContent = item.category_name || '—';
         cells[1].textContent = item.name || '';
         cells[2].textContent = item.betrag_formatted || moneyToGerman(item.betrag);
-        cells[3].textContent = item.invoice_date_formatted || formatDate(item.invoice_date);
-        cells[4].innerHTML = `${escapeHtml(item.period_start_formatted || formatDate(item.period_start))}<br>bis ${escapeHtml(item.period_end_formatted || formatDate(item.period_end))}`;
-        cells[5].textContent = item.is_recurring_label || (item.is_recurring ? 'Ja' : 'Nein');
+        let taxLabel = '—';
+        if (item.tax_deductible_type === 'haushaltsnah') taxLabel = 'haushaltsnah';
+        if (item.tax_deductible_type === 'handwerker') taxLabel = 'Handwerker';
+        cells[3].innerHTML = escapeHtml(taxLabel) + (Number(item.tax_deductible_amount || 0) > 0 ? '<br><small>' + escapeHtml(moneyToGerman(item.tax_deductible_amount)) + '</small>' : '');
+        cells[4].textContent = item.invoice_date_formatted || formatDate(item.invoice_date);
+        cells[5].innerHTML = `${escapeHtml(item.period_start_formatted || formatDate(item.period_start))}<br>bis ${escapeHtml(item.period_end_formatted || formatDate(item.period_end))}`;
+        cells[6].textContent = item.is_recurring_label || (item.is_recurring ? 'Ja' : 'Nein');
     };
 
     table.addEventListener('click', function (event) {
@@ -221,6 +239,8 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('period_start', form.querySelector('[name="period_start"]').value);
         formData.append('period_end', form.querySelector('[name="period_end"]').value);
         formData.append('period_year', form.querySelector('[name="period_year"]').value);
+        formData.append('tax_deductible_type', form.querySelector('[name="tax_deductible_type"]').value);
+        formData.append('tax_deductible_amount', form.querySelector('[name="tax_deductible_amount"]').value);
 
         fetch(vmCostsInline.ajaxUrl, {
             method: 'POST',
