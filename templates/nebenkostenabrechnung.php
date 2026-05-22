@@ -374,27 +374,87 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                 break;
             }
         }
+
+        $colspan = $show_time_columns ? 6 : 4;
         ?>
+        <br>
         <div class="vm-pdf-section vm-pdf-section-tax-deductible">
-            <h2>Steuerlicher Ausweis nach § 35a EStG</h2>
-            <?php
-            foreach ($groups as $group_type => $group_title) {
-                $group_rows = array_filter($tax_rows, function ($row) use ($group_type) {
+            <h3>Steuerlicher Ausweis nach § 35a EStG</h3>
+
+            <?php foreach ($groups as $group_type => $group_title) : ?>
+                <?php
+                $group_rows = array_values(array_filter($tax_rows, function ($row) use ($group_type) {
                     return ($row['tax_deductible_type'] ?? '') === $group_type;
-                });
+                }));
 
                 if (empty($group_rows)) {
                     continue;
                 }
 
-                echo '<h3>' . esc_html($group_title) . '</h3>';
+                $rows_by_apartment = [];
+                $group_sum_tax_deductible_amount = 0.0;
+                $group_sum_share_before_factor = 0.0;
+                $group_sum_tax_deductible_share = 0.0;
+                $group_seen_tax_deductible_amount_keys = [];
 
+                foreach ($group_rows as $row) {
+                    $apartment_id = (int) ($row['apartment_id'] ?? 0);
+                    $apartment_name = trim((string) ($row['apartment_name'] ?? ''));
+                    $apartment_key = $apartment_id > 0 ? 'apartment_' . $apartment_id : 'apartment_' . md5($apartment_name);
+
+                    if (!isset($rows_by_apartment[$apartment_key])) {
+                        $rows_by_apartment[$apartment_key] = [
+                            'apartment_name' => $apartment_name !== '' ? $apartment_name : 'Ohne Einheit',
+                            'items' => [],
+                            'sum_tax_deductible_amount' => 0.0,
+                            'sum_share_before_factor' => 0.0,
+                            'sum_tax_deductible_share' => 0.0,
+                        ];
+                    }
+
+                    $rows_by_apartment[$apartment_key]['items'][] = $row;
+                    $rows_by_apartment[$apartment_key]['sum_tax_deductible_amount'] += (float) ($row['tax_deductible_amount'] ?? 0);
+                    $rows_by_apartment[$apartment_key]['sum_share_before_factor'] += (float) ($row['share_before_factor'] ?? 0);
+                    $rows_by_apartment[$apartment_key]['sum_tax_deductible_share'] += (float) ($row['tax_deductible_share'] ?? 0);
+
+                    // Wichtig bei mehreren Einheiten, z. B. Wohnung + Stellplatz:
+                    // Die gleiche Kostenposition kann in der Anzeige pro Einheit auftauchen.
+                    // Die Lohn-/Arbeitskosten GESAMT gehören aber zur Rechnung/Kostenposition
+                    // und dürfen in der Endsumme nicht mehrfach gezählt werden.
+                    $tax_amount_unique_key = '';
+                    if (!empty($row['cost_id'])) {
+                        $tax_amount_unique_key = 'cost_' . (int) $row['cost_id'];
+                    } else {
+                        $tax_amount_unique_key = md5(
+                            (string) ($row['cost_name'] ?? '') . '|' .
+                            (string) ($row['category_name'] ?? '') . '|' .
+                            (string) ($row['tax_deductible_type'] ?? '') . '|' .
+                            number_format((float) ($row['tax_deductible_amount'] ?? 0), 2, '.', '')
+                        );
+                    }
+
+                    if (!isset($group_seen_tax_deductible_amount_keys[$tax_amount_unique_key])) {
+                        $group_seen_tax_deductible_amount_keys[$tax_amount_unique_key] = true;
+                        $group_sum_tax_deductible_amount += (float) ($row['tax_deductible_amount'] ?? 0);
+                    }
+
+                    // Diese beiden Werte sind Mieter-/Einheitenanteile und bleiben additiv.
+                    $group_sum_share_before_factor += (float) ($row['share_before_factor'] ?? 0);
+                    $group_sum_tax_deductible_share += (float) ($row['tax_deductible_share'] ?? 0);
+                }
+
+                uasort($rows_by_apartment, function ($a, $b) {
+                    return mb_strtolower((string) $a['apartment_name']) <=> mb_strtolower((string) $b['apartment_name']);
+                });
                 ?>
+
+                <h4><?php echo esc_html($group_title); ?></h4>
+
                 <table class="vm-pdf-table vm-pdf-table-compact">
                     <thead>
                         <tr>
                             <th>Kostenart</th>
-                            <th style="text-align:right;">Gesamtkosten</th>
+                            <th style="text-align:right;">Lohn-/Arbeitskosten gesamt</th>
                             <th>Verteiler / Schlüssel</th>
                             <?php if ($show_time_columns): ?>
                                 <th style="text-align:right;">Anteil vor Zeitfaktor</th>
@@ -404,67 +464,94 @@ $vm_pdf_tenant_index = $vm_pdf_tenant_index ?? 'all';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($group_rows as $row): ?>
-                            
-                            <tr>
-                                <td>
-                                    <?php echo esc_html($row['cost_name'] ?? ''); ?>
-                                    <?php if (!empty($row['category_name'])) : ?>
-                                        <br><small><?php echo esc_html($row['category_name']); ?></small>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['tax_deductible_amount'] ?? 0)); ?></td>
-                                <td style="text-align:center;">
-                                    <?php
-                                    if (!empty($row['allocation_display'])) {
-                                        echo esc_html($row['allocation_display']);
-                                    } else {
-                                        echo esc_html(
-                                            number_format((float) ($row['tenant_value'] ?? 0), 2, ',', '.')
-                                            . ' / ' .
-                                            number_format((float) ($row['total_value'] ?? 0), 2, ',', '.')
-                                        );
-                                    }
-                                    ?>
-                                </td>
+                        <?php foreach ($rows_by_apartment as $apartment_group) : ?>
+                            <?php
+                            usort($apartment_group['items'], function ($a, $b) {
+                                $category_a = mb_strtolower(trim((string) ($a['category_name'] ?? '')));
+                                $category_b = mb_strtolower(trim((string) ($b['category_name'] ?? '')));
 
-                                <?php if ($show_time_columns): ?>
-                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['share_before_factor'] ?? 0)); ?></td>
+                                if ($category_a !== $category_b) {
+                                    return $category_a <=> $category_b;
+                                }
+
+                                return mb_strtolower(trim((string) ($a['cost_name'] ?? '')))
+                                    <=> mb_strtolower(trim((string) ($b['cost_name'] ?? '')));
+                            });
+                            ?>
+
+                            <tr style="background:#f5f5f5;">
+                                <th colspan="<?php echo esc_attr($colspan); ?>" style="text-align:left;">
+                                    Einheit: <?php echo esc_html($apartment_group['apartment_name']); ?>
+                                </th>
+                            </tr>
+
+                            <?php foreach ($apartment_group['items'] as $row): ?>
+                                <tr>
+                                    <td>
+                                        <?php echo esc_html($row['cost_name'] ?? ''); ?>
+                                        <?php if (!empty($row['category_name'])) : ?>
+                                            <br><small><?php echo esc_html($row['category_name']); ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['tax_deductible_amount'] ?? 0)); ?></td>
                                     <td style="text-align:center;">
                                         <?php
-                                        $occupied_days = (int) ($row['occupied_days'] ?? 0);
-                                        $year_days = (int) ($row['year_days'] ?? 0);
-                                        $tenant_factor = (float) ($row['tenant_factor'] ?? 0);
-
-                                        echo esc_html(
-                                            $occupied_days . ' / ' . $year_days . ' (' . number_format($tenant_factor, 4, ',', '.') . ')'
-                                        );
+                                        if (!empty($row['allocation_display'])) {
+                                            echo esc_html($row['allocation_display']);
+                                        } else {
+                                            echo esc_html(
+                                                number_format((float) ($row['tenant_value'] ?? 0), 2, ',', '.')
+                                                . ' / ' .
+                                                number_format((float) ($row['total_value'] ?? 0), 2, ',', '.')
+                                            );
+                                        }
                                         ?>
                                     </td>
-                                <?php endif; ?>
 
-                                <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['tax_deductible_share'] ?? 0)); ?></td>
+                                    <?php if ($show_time_columns): ?>
+                                        <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['share_before_factor'] ?? 0)); ?></td>
+                                        <td style="text-align:center;">
+                                            <?php
+                                            $occupied_days = (int) ($row['occupied_days'] ?? 0);
+                                            $year_days = (int) ($row['year_days'] ?? 0);
+                                            $tenant_factor = (float) ($row['tenant_factor'] ?? 0);
+
+                                            echo esc_html(
+                                                $occupied_days . ' / ' . $year_days . ' (' . number_format($tenant_factor, 4, ',', '.') . ')'
+                                            );
+                                            ?>
+                                        </td>
+                                    <?php endif; ?>
+
+                                    <td style="text-align:right;"><?php echo esc_html(vm_format_money($row['tax_deductible_share'] ?? 0)); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+
+                            <tr style="background:#fafafa;">
+                                <th style="text-align:right;">Zwischensumme<br><?php echo esc_html($apartment_group['apartment_name']); ?></th>
+                                <th style="text-align:right;"><?php echo esc_html(vm_format_money($apartment_group['sum_tax_deductible_amount'])); ?></th>
+                                <th></th>
+                                <?php if ($show_time_columns): ?>
+                                    <th style="text-align:right;"><?php echo esc_html(vm_format_money($apartment_group['sum_share_before_factor'])); ?></th>
+                                    <th></th>
+                                <?php endif; ?>
+                                <th style="text-align:right;"><?php echo esc_html(vm_format_money($apartment_group['sum_tax_deductible_share'])); ?></th>
                             </tr>
                         <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
+
                         <tr>
-                            <th>Summe</th>
+                            <th>Summe <?php echo esc_html($group_title); ?></th>
+                            <th style="text-align:right;"><?php echo esc_html(vm_format_money($group_sum_tax_deductible_amount)); ?></th>
+                            <th></th>
                             <?php if ($show_time_columns): ?>
-                                <th></th>
+                                <th style="text-align:right;"><?php echo esc_html(vm_format_money($group_sum_share_before_factor)); ?></th>
                                 <th></th>
                             <?php endif; ?>
-                            <th style="text-align:right;">
-                                <?php echo esc_html(vm_format_money(array_sum(array_column($tax_rows, 'tenant_share')))); ?>
-                            </th>
-                            <TH></TH>
-                            <th style="text-align:right;">
-                                <?php echo esc_html(vm_format_money(array_sum(array_column($tax_rows, 'tax_deductible_share')))); ?>
-                            </th>
+                            <th style="text-align:right;"><?php echo esc_html(vm_format_money($group_sum_tax_deductible_share)); ?></th>
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
-            <?php } ?>
+            <?php endforeach; ?>
         </div>
         <?php
     };
