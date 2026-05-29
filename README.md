@@ -56,21 +56,22 @@ Made for my privat purpeses, it worked but is not perfect.
 ## Installation
 
 1. Download repo folder vermieter with all files and folder:
-    repo/
-    ├── vermieter/
-    │   ├── vermieter.php
-    │   ├── includes/
-    │   └── assets/
-    │   └── inlcoudes/
-    │   └── modules/
-    │   └── templates/
-    ├── docs/               // not nessaray for Wordpress Plugin
-    └── README.md           // not nessaray for Wordpress Plugin
-2. Upload the plugin `repo/vermieter` to the `/wp-content/plugins/` directory.
+```text
+repo/
+├── vermieter/
+│   ├── vermieter.php
+│   ├── includes/
+│   ├── assets/
+│   ├── modules/
+│   └── templates/
+├── docs/       # Not required for the WordPress plugin
+└── README.md   # Repository documentation
+```
+3. Upload the plugin `repo/vermieter` to the `/wp-content/plugins/` directory.
     need to look like `/wp-content/plugins/vermieter`
-3. Activate the plugin through the WordPress admin panel.
-4. Open the **Vermieter** menu in the WordPress, you need to be logedin.
-5. Create your property and start entering tenants and costs.
+4. Activate the plugin through the WordPress admin panel.
+5. Open the **Vermieter** menu in the WordPress, you need to be logedin.
+6. Create your property and start entering tenants and costs.
 
 ## Workflow
 
